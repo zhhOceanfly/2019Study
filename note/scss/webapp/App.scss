@@ -1,0 +1,122 @@
+//1.定义变量
+//css
+/*.container1 {
+	border:1px solid #aaa;
+}
+*/
+//scss
+$border-color1:#aaa;
+.container1 {
+	$border-width1:1px;
+	border:$border-width1 solid $border-color1;
+}
+
+
+//2.嵌套选择器
+//css
+/*.container2 ul {
+    border:1px solid #aaa;
+	list-style:none;
+}
+
+.container2 ul:after {
+    display:block;
+    content:"";
+    clear:both;
+}
+
+.container2 ul li {
+    float:left
+}
+
+.container2 ul li>a {
+    display:inline-block;
+    padding:6px 12px;
+}
+*/
+//scss
+.container2 ul {
+    border:1px solid #aaa;
+    list-style:none;
+    
+    li {
+        float:left;
+        
+        > a {
+            display:inline-block;
+            padding:6px 12px;
+        }
+    }
+    
+    &:after {
+        display:block;
+        content:"";
+        clear:both;
+    }
+}
+
+
+//3.导入样式文件
+//css
+//css
+/*.container3 {
+	border:1px solid #aaa;
+}
+*/
+//scss
+$border-color3:#aaa;
+@import './App2.scss';
+.container3 {
+	border:1px solid $border-color3;
+}
+
+
+//4.注释（编译后不可见）
+/*4.注释（编译后可见）*/
+
+
+//5.混合器（函数）
+//css
+//css
+/*.container5 {
+	border:1px solid #aaa;
+	-moz-border-radius: 5px;
+    -webkit-border-radius: 5px;
+    border-radius: 5px;
+}
+*/
+//scss
+@mixin get-border-radius($border-radius:5px,$color:red){
+    -moz-border-radius: $border-radius;
+    -webkit-border-radius: $border-radius;
+    border-radius: $border-radius;
+	color:$color;
+}
+
+.container5 {
+	border:1px solid #aaa;
+	@include get-border-radius($color:blue,$border-radius:10px);
+}
+
+
+//6.继承
+//css
+//css
+/*.container6 {
+	border:1px solid #aaa;
+	-moz-border-radius: 5px;
+    -webkit-border-radius: 5px;
+    border-radius: 5px;
+}
+*/
+//scss
+%border-style {
+  border:1px solid #aaa;
+  -moz-border-radius: 5px;
+  -webkit-border-radius: 5px;
+  border-radius: 5px;
+}
+
+.container6 {
+	@extend %border-style;
+}
