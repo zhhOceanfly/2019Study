@@ -195,7 +195,7 @@ console.log(obj.name);  //输出李雷
 可能你还没有遇到过回调地狱，但是JS作为一门异步编程的语言，学习Promise十分重要，它可以让我们优雅的编写异步程序，详情请看[ES6 Promise](./promise.md)。
 
 ### 8 类与继承
-ES6中提供了class关键字与extends关键字让我们方便快捷的书写OOP代码，详情请看[ES6 类与继承](https://juejin.im/post/5cfc64736fb9a07f0c4674ba)。
+ES6中提供了class关键字与extends关键字让我们方便快捷的书写OOP代码，详情请看[ES6 类与继承](./classAndExtends.md)。
 
 ### 9 export与import
 在ES5的时候，在同一个html文件中引入两个js文件来实现js跨文件的引用。
