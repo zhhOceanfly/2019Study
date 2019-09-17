@@ -4,7 +4,7 @@
 ## 目标
 1.加强HTML、CSS、JS细节
 
-2.熟悉SCSS
+2.熟悉Less、SCSS等css预编译器
 
 3.熟练使用VueJS全家桶
 
@@ -14,15 +14,23 @@
 
 6.学习nodeJS，实现单人独立开发系统
 
-7.熟悉TypeScript
+7.学习express.js框架
 
-8.加强数据结构与算法基础
+8.熟悉TypeScript
+
+9.加强数据结构与算法基础
+
 ## note
 * SCSS快速入门
 * MockJS快速入门
 * 弹性布局快速入门
 * ES6快速入门
+* Node.js基础知识
+* Node.js快速入门
+* express.js快速入门
+
 ## vue
 * vue响应式更新原理及实现一个简易的双向数据绑定
+
 ## CSS
 * 修改浏览器滚动条
