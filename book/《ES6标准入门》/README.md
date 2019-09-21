@@ -307,4 +307,197 @@ String.raw = function (strings, ...values) {
 ```
 
 ## 5 正则的扩展
-### 
+### 5.1 构造函数的扩展
+```
+// ES5中创建正则对象的方法
+var regexp1 = /abc/ig
+var regexp2 = new RegExp(/abc/ig)
+var regexp3 = new RegExp('abc','ig')
+
+// ES6扩展了正则的构造函数，第一个参数为正则对象时，可以接受第二个参数作为修饰符并覆盖原修饰符
+let regexp4 = new RegExp(/abc/ig,'i')
+```
+
+### 5.2 字符串的正则方法移植到正则对象的原型上
+字符串对象共有 4 个正则方法，分别是match()、replace()、search()和split()。
+```
+const reg = /abc/ig
+const str = 'abcdabcd'
+// 返回所有匹配成功的结果组成的数组
+str.match(reg) // [ 'abc', 'abc' ]
+// 返回第一次匹配成功时的下标
+str.search(reg) // 0
+// 将匹配成功的结果替换为第二个参数传入的字符串
+str.replace(reg,'-') // -d-d
+// 将正则匹配成功的结果作为分隔符，将字符串分隔为一个数组
+str.split(reg) // [ '', 'd', 'd' ]
+```
+ES6 将这 4 个方法写在RegExp的原型对象上，从而做到所有与正则相关的方法，全都定义在RegExp对象上。
+1. String.prototype.match 调用 RegExp.prototype[Symbol.match]
+```
+str.match(reg) // [ 'abc', 'abc' ]
+reg[Symbol.match](str) // [ 'abc', 'abc' ]
+```
+2. String.prototype.replace 调用 RegExp.prototype[Symbol.replace]
+```
+str.search(reg) // 0
+reg[Symbol.search](str) // 0
+```
+3. String.prototype.search 调用 RegExp.prototype[Symbol.search]
+```
+str.replace(reg,'-') // -d-d
+reg[Symbol.replace](str,'-') // -d-d
+```
+4. String.prototype.split 调用 RegExp.prototype[Symbol.split]
+```
+str.split(reg) // [ '', 'd', 'd' ]
+reg[Symbol.split](str) // [ '', 'd', 'd' ]
+```
+
+### 5.3 新增修饰符u
+u修饰符，含义为“Unicode 模式”，用来正确处理大于\uFFFF的 Unicode 字符。也就是说，会正确处理四个字节的 UTF-16 编码。
+```
+/^\uD83D/u.test('\uD83D\uDC2A') // ES6中增加修饰符u，可以识别为false
+/^\uD83D/.test('\uD83D\uDC2A') // ES5中识别为true
+```
+
+增加了修饰符u的其他改变：
+1. 点字符识别码点大于0xFFFF的unicode编码时，会认为是两个字符，匹配两次.，增加u修饰符后对于码点大于0xFFFF的unicode编码会识别为一个字符，匹配一次.
+2. /\u{61}/中的\u后面的大括号不会被识别为量词符
+3. 码点大于0xFFFF的 Unicode 字符可以被量词符正确识别
+```
+/𠮷{2}/.test('𠮷𠮷') // false
+/𠮷{2}/u.test('𠮷𠮷') // true
+```
+4. 码点大于0xFFFF的 Unicode 字符可以被预定义模式正确识别
+```
+/^\S$/.test('𠮷') // false
+/^\S$/u.test('𠮷') // true
+```
+5. 正则书写不规范的时候会抛出错误
+```
+/\,/ // /\,/
+/\,/u // 报错
+```
+6. 总结：匹配的字符串中可能存在码点超出0xFFFF的unicode字符都需要考虑使用修饰符u
+
+### 5.4 增加实例属性unicode
+增加实例属性unicode用于判断一个正则对象是否具有修饰符u
+```
+/abc/u.unicode // true
+/abc/.unicode //false
+```
+
+### 5.5 新增修饰符y
+ES6 还为正则表达式添加了y修饰符，叫做“粘连”（sticky）修饰符。
+
+ES5中有一个修饰符g表示全局匹配，后一次匹配都从上一次匹配成功的下一个位置开始。
+y修饰符与g修饰符类似。不同之处在于，g修饰符只要剩余位置中存在匹配字符则返回匹配数组，而y修饰符必须从剩余的第一个位置存在匹配字符才能返回匹配数。
+```
+const s = 'aaa_aa_a'
+// 剩余字符中任意位置匹配一个以上的a
+const r1 = /a+/g
+// 剩余字符中开头位置匹配一个以上的a
+const r2 = /a+/y
+
+r1.exec(s) // ["aaa"]
+r2.exec(s) // ["aaa"]
+// 第一次匹配成功后index为4，也就是下次从下标为4的位置开始匹配
+r1.exec(s).index // 4
+
+// 从下标为4的位置开始匹配，则剩余字符串为'_aa_a'
+r1.exec(s) // ["aa"]  剩余字符串任意位置匹配到了/a+/，则返回匹配的数组
+r2.exec(s) // null    剩余字符串第一个位置没有匹配到/a+/，则返回null
+```
+#### 5.5.1 注意事项
+1. 可以感觉出，y修饰符号隐含了头部匹配的标志^。
+2. 修饰符y多与修饰符g联用，单独使用修饰符y不会匹配全局（惰性匹配）
+```
+'a1a2a3'.match(/a\d/y) // ["a1"]
+'a1a2a3'.match(/a\d/gy) // ["a1", "a2", "a3"]
+```
+
+#### 5.5.2 使用场景
+修饰符y过滤性会比修饰符g更强，可以用于防止用户输入非法字符
+
+下面的正则用于匹配数字或加号，匹配到其他字符时直接中断匹配
+```
+const Y = /\s*(\+|[0-9]+)\s*/yg;
+const G  = /\s*(\+|[0-9]+)\s*/g;
+
+'3x + 4'.match(Y) // [ '3' ]
+// 存在非法字符x，但修饰符g还是会继续匹配
+'3x + 4'.match(G) // [ '3', ' + ', '4' ]
+```
+
+### 5.6 新增实例属性sticky
+新增实例属性sticky用于判断正则对象的修饰符y是否存在
+```
+/abc/y.sticky // true
+/abc/.sticky // false
+```
+
+### 5.7 新增实例属性flags 
+新增实例属性flags，用于返回正则表达式的修饰符。
+```
+// source属性返回正则对象的正文
+/abc/ig.source // 'abc'
+
+// flags属性返回正则对象的修饰符
+/abc/ig.flags // 'gi'
+```
+
+### 5.8 新增修饰符s
+ES5中的（.）有两类字符不能正确匹配，第一类不能匹配码点超出0xFFFF的unicode字符，第二类不能匹配行终止符（行终止符，就是该字符表示一行的终结），下面四个都是行终止符
+* U+000A 换行符（\n）
+* U+000D 回车符（\r）
+* U+2028 行分隔符（line separator）
+* U+2029 段分隔符（paragraph separator）
+
+新增修饰符s可以使（.）匹配任意字符
+```
+/foo.bar/.test('foo\nbar') //false
+/foo.bar/s.test('foo\nbar') //true
+```
+修饰符s也叫dotAll模式，即点（dot）代表一切字符
+
+### 5.9 新增实例属性dotAll
+新增实例属性dotAll用于判断正则对象是否存在修饰符s
+```
+/abc/s.dotAll // true
+/abc/.dotAll // false
+```
+
+### 5.10 后行断言
+ES5的正则只支持先行断言和先行否定断言,不支持后行断言和后行否定断言，ES2018引入后行断言
+
+#### 5.10.1 先行断言和先行否定断言
+*  先行断言（x(?=y)）是指只有x在y前面时，才匹配x
+*  先行否定断言（x(?!y)）是指只有x不在y前面时，才匹配x
+```
+// 匹配数字后面带有%的所有数字
+/\d+(?=%)/.exec('100% of US presidents have been male')  // ["100"]
+// 匹配数字后面不带有%的所有数字
+/\d+(?!%)/.exec('that’s all 44 of them') ["44"]
+```
+#### 5.10.2 ES2018增加的后行断言
+后行断言与现行断言正好相反
+*  后行断言（(?<=y)x）是指只有x在y后面时，才匹配x
+*  先行否定断言（(?<!y)x）是指只有x不在y后面时，才匹配x
+```
+// 匹配数字前面带有$的所有数字
+/(?<=\$)\d+/.exec('Benjamin Franklin is on the $100 bill')  // ["100"]
+// 匹配数字前面不带有$的所有数字
+/\d+(?!%)/.exec('that’s all 44 of them') // ["90"]
+```
+
+#### 5.10.3 后行断言注意事项
+“后行断言”的实现，需要先匹配/(?<=y)x/的x，然后再回到左边，匹配y的部分。这种“先右后左”的执行顺序，与所有其他正则操作相反，导致了一些不符合预期的行为。
+* 后行断言的组匹配，与正常情况下结果是不一样的
+* 后行断言的反斜杠引用，也与通常的顺序相反
+
+
+### 5.11 Unicode 属性类
+ES2018 引入了一种新的类的写法\p{...}和\P{...}，允许正则表达式匹配符合 Unicode 某种属性的所有字符。
+
+<!-- 后续正则扩展暂时不看 -->
