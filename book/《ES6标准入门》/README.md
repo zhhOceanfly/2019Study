@@ -688,3 +688,122 @@ Math.pow(2,10) // 1024
 
 2**10**2 // 等价于2^(10^2)
 ```
+
+## 7 函数的扩展
+### 7.1 函数参数的默认值
+```
+// ES5函数默认值
+function fun1(x) {
+  x = x || 'normal'
+  return x
+}
+
+// ES6函数默认值
+function fun2(x = 'normal) {
+  return x
+}
+```
+ES5函数默认值的缺点：参数赋值了，但是对应的布尔值为false，则该赋值不起作用，会采用默认值。
+```
+// 改善后的ES5函数默认值
+function fun1(x) {
+  if(x === undefined) {
+    x = 'normal'
+  }
+  return x
+}
+```
+
+#### 7.1.1 注意事项
+* 若参数默认值是一个表达式，则每次都重新计算默认值表达式的值。也就是说，参数默认值是惰性求值的。尽量不使用表达式做默认值。
+* ES5中函数的length属性表示函数期望接收的参数个数，ES6使用参数默认值后，length属性是函数参数的个数减去设置了默认值的参数的个数，本质也是表示函数期望接收的参数个数。
+* (重要！！)一旦设置了参数的默认值，函数进行声明初始化时，参数会形成一个单独的作用域（context）。等到初始化结束，这个作用域就会消失。这种语法行为，在不设置参数默认值时，是不会出现的。
+```
+var x = 1;
+function foo(x, y = function() { x = 2; }) {
+  var x = 3;
+  y();
+  console.log(x);
+}
+foo() // 3
+
+var x = 1;
+function foo(x, y = function() { x = 2; }) {
+  x = 3;
+  y();
+  console.log(x);
+}
+foo() // 2
+```
+
+### 7.2 rest参数
+ES6 引入 rest 参数（形式为...变量名），用于获取函数的多余参数，这样就不需要使用arguments对象了。
+
+注意：不是引入了一个叫rest的参数，rest参数是一种表现形式！！
+
+```
+// ES5
+function sum1 () {
+  console.log(argument)
+}
+
+// ES6
+function sum2 (...values) {
+  console.log(values)
+}
+```
+#### 7.2.1 注意事项
+* rest参数必须是最后一个参数，否则会报错
+* 函数的length属性不会包括rest参数
+
+### 7.3 严格模式
+```
+// ES5可以显示定义严格模式的函数
+function doSomething(a, b) {
+  'use strict';
+}
+```
+ES2016 做了一点修改，规定只要函数参数使用了默认值、解构赋值、或者扩展运算符，那么函数内部就不能显式设定为严格模式，否则会报错。
+```
+// js解释引擎会先解释参数，然后再进入函数体中，此时解析到使用严格模式，与参数部分冲突，于是报错
+function doSomething(value = 070) {
+  'use strict';
+  return value;
+}
+```
+可以通过定义全局严格模式避免这种情况
+
+### 7.4 name属性
+新增函数的name属性，返回该函数的函数名。
+```
+function foo() {}
+foo.name // "foo"
+```
+匿名函数ES5中name发回空字符串，ES6返回变量名
+```
+var f = function () {};
+// ES5
+f.name // ""
+// ES6
+f.name // "f"
+```
+具名函数ES5与ES6都返回具名函数原本的名字
+```
+const bar = function baz() {};
+// ES5
+bar.name // "baz"
+// ES6
+bar.name // "baz"
+```
+Function构造函数返回的函数实例，name属性的值为anonymous。
+```
+(new Function).name // "anonymous"
+```
+bind返回的函数，name属性值会加上bound前缀。
+```
+function foo() {};
+foo.bind({}).name // "bound foo"
+
+(function(){}).bind({}).name // "bound "
+```
+### 7.5 箭头函数
