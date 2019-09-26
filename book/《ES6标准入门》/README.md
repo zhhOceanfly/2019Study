@@ -807,3 +807,185 @@ foo.bind({}).name // "bound foo"
 (function(){}).bind({}).name // "bound "
 ```
 ### 7.5 箭头函数
+#### 7.5.1 特点
+1. 箭头函数是匿名函数，不能作为构造函数，不能使用 new。
+```
+var B = () => {
+  value:1;
+}
+var b = new B();  //-->TypeError: B is not a constructor
+```
+2. 箭头函数不绑定 arguments，取而代之用 rest 参数解决。
+```
+function A(a) {
+  console.log(arguments); 
+}
+var B = (b) => {
+  console.log(arguments); 
+}
+//...c 即为 rest 参数
+var C = (...c) => { 
+  console.log(c); 
+}
+A(1);  //-->[object Arguments] {0: 1}
+B(2);  //-->ReferenceError: arguments is not defined
+C(3);  //-->[3]
+```
+3. 箭头函数不绑定 this，会捕获其所在的上下文的 this 值，作为自己的 this 值。
+```
+var obj = {
+  a: 10,
+  b: function() {
+    console.log(this.a); 
+  },
+  c: function() {
+     return () => {
+       console.log(this.a);
+     }
+  }
+}
+obj.b();  //-->10
+obj.c()();  //-->10
+```
+4. 箭头函数通过 call()  或  apply() 方法调用一个函数时，只传入了一个参数，对 this 并没有影响。
+```
+var obj = {
+  a: 10,
+  b: function(n) {
+    var f = (v) => v + this.a;
+    return f(n);
+  },
+  c: function(n) {
+    var f = (v) => v + this.a;
+    var m = {a:20};
+    return f.call(m,n);
+  }
+}
+console.log(obj.b(1));  //-->11
+console.log(obj.c(1));  //-->11
+```
+5. 箭头函数没有原型属性。
+```
+var a = () => {
+  return 1;
+}
+function b() {
+  return 2;
+}
+console.log(a.prototype);  //-->undefined
+console.log(b.prototype);  //-->object{...}
+```
+6. 箭头函数不能当做 Generator 函数,不能使用 yield 关键字。箭头函数不能换行。
+```
+var a = ()
+          => 1;  //-->SyntaxError: Unexpected token =>
+```
+7. 由于大括号被解释为代码块，所以如果箭头函数直接返回一个对象，必须在对象外面加上括号，否则会报错。
+```
+// 报错
+let getTempItem = id => { id: id, name: "Temp" };
+
+// 不报错
+let getTempItem = id => ({ id: id, name: "Temp" });
+```
+8. 箭头函数可以与解构赋值联用
+#### 7.5.2 ES5对照写法
+```
+// ES6
+function foo() {
+  setTimeout(() => {
+    console.log('id:', this.id);
+  }, 100);
+}
+
+// ES5
+function foo() {
+  var _this = this;
+
+  setTimeout(function () {
+    console.log('id:', _this.id);
+  }, 100);
+}
+```
+### 7.6 尾调用优化
+尾调用（Tail Call）是函数式编程的一个重要概念，本身非常简单，一句话就能说清楚，就是指某个函数的最后一步是调用另一个函数。
+```
+function f(x){
+  return g(x);
+}
+```
+不属于尾调用的：
+```
+// 情况一
+function f(x){
+  let y = g(x);
+  return y;
+}
+
+// 情况二
+function f(x){
+  return g(x) + 1;
+}
+
+// 情况三
+function f(x){
+  g(x);
+}
+```
+函数在调用的时候会形成一个“调用帧”，用于保存调动位置和内部变量等信息，若函数是尾调用的，那么不会保存外层的“调用帧”
+```
+function f() {
+  let m = 1;
+  let n = 2;
+  return g(m + n);
+}
+f();
+
+// 等同于
+function f() {
+  return g(3);
+}
+f();
+
+// 等同于
+g(3);
+```
+//目前只有safari浏览器会自动执行尾调用优化
+
+#### 7.6.1 尾递归
+递归函数在最后一步调用自己即为尾递归。
+
+递归非常耗费内存，因为需要同时保存成千上百个调用帧，很容易发生“栈溢出”错误（stack overflow）。但对于尾递归来说，由于只存在一个调用帧，所以永远不会发生“栈溢出”错误。
+```
+// 阶乘案例
+// 普通递归 空间复杂的O(n)
+function factorial(n) {
+  if (n === 1) return 1
+  return n * factorial(n - 1)
+}
+factorial(5) // 120
+
+// 尾递归 空间复杂的O(1)
+function factorial(n, total = 1) {
+  if (n === 1) return total
+  return factorial(n - 1, n * total)
+}
+factorial(5) // 120
+```
+注意事项：纯函数式编程语言中没有循环语句，使用使用梯柜必须使用尾递归，但js中可以使用for循环代替递归，能for循环就不要使用递归，避免栈溢出。
+
+尾递归优化只在严格模式下开启，因为尾递归优化会影响func.arguments和func.caller
+#### 7.6.2 尾递归优化的实现
+
+### 7.7 Function.prototype.toString()
+ES2019 对函数实例的toString()方法做出了修改。toString()方法返回函数代码本身，以前会省略注释和空格。
+
+### 7.8 catch 命令的参数省略
+ES5前规定catch语句必须带括号，否则会报错，ES2019中允许了catch语句省略参数
+```
+try {
+  // ...
+} catch {
+  // ...
+}
+```
