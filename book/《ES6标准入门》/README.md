@@ -1139,3 +1139,162 @@ flat用于拍平数组，可接受一个参数表示需要拍平的层数，默�
 
 数组API对空位的处理行为很不一致，所以要尽量避免数组出现空位。可以使用Array.Of()来创建并赋初值给数组。
 
+## 9 对象的扩展
+### 9.1 属性的简洁表示法
+```
+// 属性简写
+const foo = 'bar';
+// ES5写法
+var baz = {foo: foo};
+
+// ES6写法 属性名值相同的时候可以简化
+const baz = {foo};
+```
+
+```
+// 方法简写
+// ES5写法
+var obj = {
+  method: function() {
+    return "Hello!";
+  }
+};
+
+// ES6写法 方法的冒号与function可以省略
+const obj = {
+  method() {
+    return "Hello!";
+  }
+}
+```
+
+### 9.2 属性名表达式
+```
+// ES5中，对象字面量表达式不允许使用动态属性
+// ES6中可以使用
+let propKey = 'foo';
+const obj = {
+  [propKey]: true
+};
+```
+注意：动态属性是可以使用表达式的
+```
+const obj = {
+  ['Hello' + 'world']: 'Hello World!'
+}
+```
+
+### 9.3 方法的 name 属性
+对象的方法的name属性同函数的name属性
+
+### 9.4 属性的可枚举性和遍历
+#### 9.4.1 可枚举性
+对象的每个属性都有一个描述对象（Descriptor），用来控制该属性的行为。Object.getOwnPropertyDescriptor方法可以获取该属性的描述对象。
+```
+let obj = { foo: 123 };
+Object.getOwnPropertyDescriptor(obj, 'foo')
+//  {
+//    value: 123,
+//    writable: true, // 是否可写入
+//    enumerable: true, // 是否可枚举
+//    configurable: true  // 
+//  }
+```
+下面四种操作会忽略enumerable为false的属性
+* for...in循环：只遍历对象自身的和继承的可枚举的属性。
+* Object.keys()：返回对象自身的所有可枚举的属性的键名。
+* JSON.stringify()：只串行化对象自身的可枚举的属性。
+* Object.assign()： 忽略enumerable为false的属性，只拷贝对象自身的可枚举的属性。
+* 同时 ES6规定class定义的所有原型方法都是不可枚举的
+
+通过设置可枚举性可以使一些内部属性不会被遍历到
+
+#### 9.4.2 属性的遍历
+1. for...in循环遍历对象自身的和继承的可枚举属性（不含 Symbol 属性）
+2. Object.keys返回一个数组，包括对象自身的（不含继承的）所有可枚举属性（不含 Symbol 属性）的键名
+3. Object.getOwnPropertyNames返回一个数组，包含对象自身的所有属性（不含 Symbol 属性，但是包括不可枚举属性）的键名
+4. Object.getOwnPropertySymbols返回一个数组，包含对象自身的所有 Symbol 属性的键名
+5. Reflect.ownKeys返回一个数组，包含对象自身的所有键名，不管键名是 Symbol 或字符串，也不管是否可枚举
+
+遍历属性的规则：
+1. 首先遍历所有数值键，按照数值升序排列。
+2. 其次遍历所有字符串键，按照加入时间升序排列。
+3. 最后遍历所有 Symbol 键，按照加入时间升序排列。
+
+```
+Reflect.ownKeys({ [Symbol()]:0, b:0, 10:0, 2:0, a:0 })  // ['2', '10', 'b', 'a', Symbol()]
+```
+### 9.5 super 关键字
+我们知道，this关键字总是指向函数所在的当前对象，ES6 又新增了另一个类似的关键字super，指向当前对象的原型对象。
+
+super只能在对象的方法中使用
+```
+const proto = {
+  foo: 'hello'
+};
+
+const obj = {
+  foo: 'world',
+  find() {
+    return super.foo;
+  }
+};
+
+Object.setPrototypeOf(obj, proto);
+obj.find() // "hello"
+```
+JavaScript 引擎内部，super.foo等同于Object.getPrototypeOf(this).foo（属性）或Object.getPrototypeOf(this).foo.call(this)（方法）。
+
+### 9.6 对象的扩展运算符
+#### 9.6.1 作用于解构赋值中
+对象的解构赋值用于从一个对象取值，相当于将目标对象自身的所有可遍历的（enumerable）、但尚未被读取的属性，分配到指定的对象上面。所有的键和它们的值，都会拷贝到新对象上面。
+```
+// x y已被读取，剩下 a b可被遍历
+let { x, y, ...z } = { x: 1, y: 2, a: 3, b: 4 };
+z // { a: 3, b: 4 }
+```
+注意：解构赋值的拷贝是浅拷贝
+
+扩展运算符的解构赋值，不能复制继承自原型对象的属性。
+```
+let o1 = { a: 1 };
+let o2 = { b: 2 };
+o2.__proto__ = o1;
+let { ...o3 } = o2;
+o3 // { b: 2 }
+o3.a // undefined
+```
+
+用途：拓展一个函数的作用
+```
+function baseFunction({ a, b }) {
+  // ...
+}
+function wrapperFunction({ x, y, ...restConfig }) {
+  // 使用 x 和 y 参数进行操作
+  // 其余参数传给原始函数
+  return baseFunction(restConfig);
+}
+```
+#### 9.6.2 直接使用扩展运算符
+```
+let z = { a: 3, b: 4 };
+let n = { ...z };   // { a: 3, b: 4 }
+
+let foo = { ...['a', 'b', 'c'] };   // {0: "a", 1: "b", 2: "c"}
+```
+
+原理：对象的扩展运算符等同于使用Object.assign()方法。
+```
+let aClone = { ...a };
+// 等同于
+let aClone = Object.assign({}, a);
+```
+
+用途：合并两个对象
+```
+let ab = { ...a, ...b };
+
+// 同时也等同于
+let ab = Object.assign({}, a, b);
+```
