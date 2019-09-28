@@ -1298,3 +1298,168 @@ let ab = { ...a, ...b };
 // 同时也等同于
 let ab = Object.assign({}, a, b);
 ```
+
+## 10 对象的新增方法
+### 10.1 Object.is()
+ES5中比较两个值是否相同使用===，但===存在两个问题
+1. NaN不等于NaN
+2. +0等于-0
+
+ES6 提出“Same-value equality”（同值相等）算法，用来解决这个问题。Object.is就是部署这个算法的新方法。它用来比较两个值是否严格相等。除了NaN等于NaN,+0不等于-0之外，其他都与===保持一致。
+```
+Object.is(+0, -0) // false
+Object.is(NaN, NaN) // true
+```
+
+### 10.2 Object.assign()
+Object.assign方法用于对象的合并，将源对象（source）的所有可枚举属性，复制到目标对象（target）
+
+Object.assign方法的第一个参数是目标对象，后面的参数都是源对象。如果目标对象与源对象有同名属性，或多个源对象有同名属性，则后面的属性会覆盖前面的属性。
+
+注意事项：
+1. 只有一个参数的时候会将该参数直接返回，不会创建新的对象
+2. 如果参数不是对象，则先转为对象再返回
+3. 由于undefined和null无法转成对象，所以如果它们作为第一个参数，就会报错。
+```
+Object.assign(undefined) // 报错
+Object.assign(null) // 报错
+```
+4. 如果undefined和null作为源对象，则会被跳过
+5. 拷贝字符串的时候要注意（字符串是类数组对象），字符串转对象会将下标作为key，值作为value
+6. Object.assign方法实行的是浅拷贝
+7. 对于取值函数的处理，Object.assign并不能正确的复制取值函数
+```
+// 复制取值函数的时候，会先求值再进行复制，不会直接复制取值函数。
+const source = {
+  get foo() { return 1 }
+};
+const target = {};
+
+Object.assign(target, source)
+// { foo: 1 }
+```
+
+用途：
+1. 为对象添加实例属性
+```
+const obj ={}
+Object.assign(obj,{
+  x: 1,
+  y: 2
+})
+```
+2. 为对象添加原型方法
+```
+Object.assign(SomeClass.prototype, {
+  someMethod(arg1, arg2) {
+    ···
+  },
+  anotherMethod() {
+    ···
+  }
+});
+```
+3. 克隆对象
+```
+function clone(origin) {
+  return Object.assign({}, origin);
+}
+```
+4. 为属性指定默认值
+在目标对象中设置需要指定的默认值
+```
+const obj ={}
+Object.assign({
+  a:1
+},obj)
+
+```
+
+### 10.3 Object.getOwnPropertyDescriptors()
+ES5 的Object.getOwnPropertyDescriptor()方法会返回某个对象属性的描述对象。Object.getOwnPropertyDescriptors()方法则是返回对象所有属性的描述对象
+
+实现原理:
+```
+function getOwnPropertyDescriptors(obj) {
+  const result = {};
+  for (let key of Reflect.ownKeys(obj)) {
+    result[key] = Object.getOwnPropertyDescriptor(obj, key);
+  }
+  return result;
+}
+```
+
+该方法的引入目的，主要是为了解决Object.assign()无法正确拷贝get属性和set属性的问题。通过Object.getOwnPropertyDescriptors()方法配合Object.defineProperties()方法，就可以实现正确拷贝。
+```
+const source = {
+  set foo(value) {
+    console.log(value);
+  }
+};
+
+const target2 = {};
+Object.defineProperties(target2, Object.getOwnPropertyDescriptors(source));
+Object.getOwnPropertyDescriptor(target2, 'foo')
+// { get: undefined,
+//   set: [Function: set foo],
+//   enumerable: true,
+//   configurable: true }
+```
+用途：
+1. 配合Object.defineProperties()方法，就可以实现正确拷贝
+2. 配合Object.create()方法，将对象属性克隆到一个新对象。这属于浅拷贝。
+3. 实现一个对象继承另一个对象
+4. 实现mixin
+
+### 10.4 针对原型的操作：__proto__属性，Object.setPrototypeOf()，Object.getPrototypeOf()，Object.create()
+尽量不要使用__prote__属性，使用以下三个方法代替
+1. Object.getPrototypeOf() // 写操作
+2. Object.setPrototypeOf()  // 读操作
+3. Object.create() // 生成操作
+
+#### 10.4.1 Object.setPrototypeOf()
+```
+// 用于设置对象的原型对象，返回这个对象本身
+Object.setPrototypeOf(object, prototype)
+```
+
+#### 10.4.2 Object.getPrototypeOf()
+```
+// 读取对象的原型对象
+Object.getPrototypeOf(obj);
+```
+
+#### 10.4.3 Object.create()
+```
+// 传入一个对象，创建一个继承自该对象的对象
+const proto = {
+  x: 1,
+  y:1
+}
+const obj = Object.create(proto)
+obj.x // 1
+```
+
+### 10.5 Object.keys()，Object.values()，Object.entries()
+ES5中存在Object.keys()用于获得键组成的数组，ES6中增加了同类型方法
+```
+const obj ={
+  x: 1,
+  y: 2
+}
+const { keys, values, entries } = Object
+Object.keys(obj) // [ 'x', 'y' ] 获得键组成的数组
+console.log(values(obj)) // [ 1, 2 ] 获得值组成的数组
+console.log(entries(obj)) // [ [ 'x', 1 ], [ 'y', 2 ] ] 获得键值对组成的数组
+```
+
+### 10.6 Object.fromEntries()
+Object.fromEntries()方法是Object.entries()的逆操作，用于将一个键值对数组转为对象。
+```
+Object.fromEntries([
+  ['foo', 'bar'],
+  ['baz', 42]
+])
+// { foo: "bar", baz: 42 }
+```
+该方法的主要目的，是将键值对的数据结构还原为对象，因此特别适合将 Map 结构转为对象。
