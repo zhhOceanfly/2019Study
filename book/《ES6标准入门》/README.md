@@ -1959,3 +1959,101 @@ regexp[Symbol.match](str)
 #### 11.6.10 Symbol.toStringTag
 
 #### 11.6.11 Symbol.unscopables
+
+## 12 Set和Map数据结构
+### 12.1 Set
+Set中的每个值都是唯一的，不能重复。set不同与array，set不能通过下标访问
+
+Set和Map底层都是C++通过hash表实现的，Set是键值相同的hash表，所以值是唯一的
+#### 12.1.1 构造函数
+```
+// Set参数可以为空或是一个具有Iterable接口的数据结构，Set会遍历参数的Iterable接口提取出值
+let set = new Set([1,2,3,4,4,4,4,'5'])
+// 结合扩展运算符转数组
+[...set1] // [1, 2, 3, 4, '5']
+```
+
+#### 12.1.2 用途
+1. 数组去重
+```
+([...new Set(array)]
+```
+2. 字符串去重
+```
+let str = 'abcabcabcd'
+[...new Set(str)].join('')
+```
+set结构中判断两个变量是否相同使用的是Same-value-zero equality算法
+
+#### 12.1.3 实例属性及方法
+1. 返回成员总数 size
+2. 添加元素 add()
+3. 删除元素 delete()
+4. 判断是否存在 has()
+5. 清空Set clear()
+6. 返回键名的遍历器 keys()
+7. 返回键值的遍历器 values()
+8. 返回键值对的遍历器 entries()   其中键名与键值相同
+9. 遍历每一个成员 forEach() forEach的第二个参数是指定处理函数（第一个参数）内部的this对象，这在array中也存在
+
+ 遍历操作中，Set的遍历顺序就是插入顺序
+
+tips：扩展运算符内部使用的是for...of，故具备遍历器接口的数据结构都可以被展开
+
+只要将set转为数组，就可以使用数组的众多方法
+### 12.2 WeakSet
+WeakSet 与Set类似，不同点是：
+1. 成员只能是对象
+2. WeakSet的对象成员是弱引用的 垃圾回收机制不考虑 WeakSet 对该对象的引用
+
+用途不明
+
+### 12.3 Map
+Map （Hash结构） ，js对象本质上就是键名只能为字符串和Symbol的hash结构，而Map的是键名是任意类型的hash结构
+#### 12.3.1 构造函数
+Map的构造函数可以接收一个键值对的数组作为参数（或接收一个具有Iterable接口的数据结构且每个成员都是一个双元素的数组）
+```
+let map1 = new Map([[1,2],[3,4]])
+```
+#### 12.3。2 实例属性及方法
+// 数据操作
+// 长度size
+log(map1.size)
+// 判断键名是否存在 has
+log(map1.has(1))
+log(map1.has(2))
+// 获得键值
+log(map1.get(1))
+// 插入元素 多次插入后面的覆盖前面的
+map1.set(5,6)
+log(map1)
+// 删除一个键值对 delete
+map1.delete(5)
+log(map1)
+// 清空map clear
+map1.clear()
+log(map1)
+// 遍历方法
+// 返回键名遍历器 keys() 返回键值遍历器 values() 返回键值对遍历器 entries()，直接遍历类似entries，map对遍历顺序也是插入顺序
+let map2 = new Map([[1,2],[3,4],[5,6]]);
+for (let item of map2) {
+  console.log(item);
+}
+for (let item of map2.keys()) {
+  console.log(item);
+}
+for (let item of map2.values()) {
+  console.log(item);
+}
+for (let item of map2.entries()) {
+  console.log(item);
+}
+// 遍历每一个成员 forEach() forEach的第二个参数是指定处理函数（第一个参数）内部的this对象，这在array中也存在
+map2.forEach((value, key, map) => {
+  console.log(value, key, map)
+})
+
+// 结合扩展运算符
+log([...map2.keys()])
+log([...map2.values()])
+log([...map2])
