@@ -28,6 +28,24 @@ bar()
 ### 获得全局对象
 
 垫片库 global-this 可以在所有环境下拿到 globalThis(顶层对象)
+```
+// 垫片库源码
+(function (Object) {
+  typeof globalThis !== 'object' && (
+    this ?
+      get() :
+      (Object.defineProperty(Object.prototype, '_T_', {
+        configurable: true,
+        get: get
+      }), _T_)
+  );
+  function get() {
+    this.globalThis = this;
+    delete Object.prototype._T_;
+  }
+}(Object));
+export default globalThis;
+```
 
 ## 2 变量的解构赋值
 
@@ -39,7 +57,7 @@ bar()
 
 #### 特点
 
-1. 等式右边变量必须可遍历
+1. 等式右边的数据结构必须部署遍历器接口
 2. 解构赋值失败的时候返回 undefined
 3. 解构赋值可以设置默认值（或表达式），只有对应下标的值严格等于 undefined 时才使用默认值，设置默认表达式时，等到需要默认值时才会执行表达式（惰性的）
 
@@ -83,7 +101,7 @@ console.log(v) //1
 #### 数组本质也是对象，可以使用对象的解构赋值
 
 ```
-const { 0: first } =[1, 2, 3]
+const { 0: first } = [1, 2, 3]
 console.log(first) // 1
 ```
 
@@ -162,7 +180,7 @@ es6 之前只能解析\u0000-\uFFFF 的字符，超出部分必须使用双字�
 2. for...in 不能正确识别 ES6 写法的 unicode 字符串，需要使用 for...of
 3. 一些特殊字符只能通过转义字符或 unicode 字符输出，如行分隔符(\u2028)，段分隔符(\u2029)
 4. 引入模板字符串``，在模板字符串中可以使用\${}来注入 JS 表达式，也可以在模板字符串中使用换行符（普通字符串不支持换行）
-5. 模板字符串会默认将字符串转移（存疑）
+5. 模板字符串会默认将字符串转义（存疑）
 6. 标签模板功能：模板字符串紧跟在一个函数后面，会将模板字符串作为参数传递给函数并调用该函数（函数调用的特殊形式）。若模板字符串中有变量的话，会将模板字符串处理为多个参数后，再调动函数（可用于过滤 HTML 字符串，防止 XSS 攻击。也可用于多语言转换）
 
 ### 例子
@@ -268,7 +286,7 @@ for (let ch of s) {
 
 ### 4.3 String.raw()
 
-对\反转移，即将\变成\\\\，多用于模板字符串的处理方法
+对\反转义，即将\变成\ \，多用于模板字符串的处理方法
 
 ```
 String.raw`Hi\n${2+3}!`; // 返回 "Hi\\n5!"
@@ -1049,7 +1067,7 @@ console.log(obj.b(1));  //-->11
 console.log(obj.c(1));  //-->11
 ```
 
-5. 箭头函数没有原型属性。
+5. 箭头函数没有原型对象。
 
 ```
 var a = () => {
@@ -1412,7 +1430,7 @@ const obj = {
 }
 ```
 
-### 9.2 属性名表达式
+### 9.2 属性名表达式(动态属性)
 
 ```
 // ES5中，对象字面量表达式不允许使用动态属性
@@ -1448,7 +1466,7 @@ Object.getOwnPropertyDescriptor(obj, 'foo')
 //    value: 123,
 //    writable: true, // 是否可写入
 //    enumerable: true, // 是否可枚举
-//    configurable: true  //
+//    configurable: true  // 是否可配置
 //  }
 ```
 
@@ -1994,9 +2012,9 @@ set结构中判断两个变量是否相同使用的是Same-value-zero equality�
 6. 返回键名的遍历器 keys()
 7. 返回键值的遍历器 values()
 8. 返回键值对的遍历器 entries()   其中键名与键值相同
-9. 遍历每一个成员 forEach() forEach的第二个参数是指定处理函数（第一个参数）内部的this对象，这在array中也存在
+9. 遍历每一个成员 forEach() forEach的第二个参数是指定处理函数（第一个参数）内部的this对象（这在array的方法中也存在）
 
- 遍历操作中，Set的遍历顺序就是插入顺序
+遍历操作中，Set的遍历顺序就是插入顺序
 
 tips：扩展运算符内部使用的是for...of，故具备遍历器接口的数据结构都可以被展开
 
@@ -2015,45 +2033,23 @@ Map的构造函数可以接收一个键值对的数组作为参数（或接收�
 ```
 let map1 = new Map([[1,2],[3,4]])
 ```
-#### 12.3。2 实例属性及方法
-// 数据操作
-// 长度size
-log(map1.size)
-// 判断键名是否存在 has
-log(map1.has(1))
-log(map1.has(2))
-// 获得键值
-log(map1.get(1))
-// 插入元素 多次插入后面的覆盖前面的
-map1.set(5,6)
-log(map1)
-// 删除一个键值对 delete
-map1.delete(5)
-log(map1)
-// 清空map clear
-map1.clear()
-log(map1)
-// 遍历方法
-// 返回键名遍历器 keys() 返回键值遍历器 values() 返回键值对遍历器 entries()，直接遍历类似entries，map对遍历顺序也是插入顺序
-let map2 = new Map([[1,2],[3,4],[5,6]]);
-for (let item of map2) {
-  console.log(item);
-}
-for (let item of map2.keys()) {
-  console.log(item);
-}
-for (let item of map2.values()) {
-  console.log(item);
-}
-for (let item of map2.entries()) {
-  console.log(item);
-}
-// 遍历每一个成员 forEach() forEach的第二个参数是指定处理函数（第一个参数）内部的this对象，这在array中也存在
-map2.forEach((value, key, map) => {
-  console.log(value, key, map)
-})
+#### 12.3.2 实例属性及方法
+1. 返回成员总数 size
+2. 获得键值 get()
+3. 添加元素 set(key, value)
+4. 删除元素 delete()
+5. 判断是否存在 has()
+6. 清空Set clear()
+7. 返回键名的遍历器 keys()  // 遍历顺序为插入顺序
+8. 返回键值的遍历器 values()
+9. 返回键值对的遍历器 entries()
+10. 遍历每一个成员 forEach() forEach的第二个参数是指定处理函数（第一个参数）内部的this对象
 
+```
 // 结合扩展运算符
 log([...map2.keys()])
 log([...map2.values()])
-log([...map2])
+log([...map2]) // 扩展运算符默认调用entries方法
+```
+
+### 12.4 WeakMap
