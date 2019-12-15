@@ -2053,3 +2053,287 @@ log([...map2]) // 扩展运算符默认调用entries方法
 ```
 
 ### 12.4 WeakMap
+
+## 13 proxy
+
+### 13.1 概述
+proxy用于修改某个操作的默认行为（即对编程语言进行编程），与 Object.definedProperty() 有点类似
+不同点：
+1. Proxy可以直接监听对象而非属性
+2. Proxy直接可以劫持整个对象,并返回一个新对象,不管是操作便利程度还是底层功能上都远强于Object.defineProperty。
+3. Proxy可以直接监听数组的变化
+4. Proxy有多达13种拦截方法,不限于apply、ownKeys、deleteProperty、has等等是Object.defineProperty不具备的。
+
+### 13.2 特点
+* handle为空对象时，代理对象直接指向原对象
+* 代理对象是可以被继承的
+* tips: 代理对象可以设置在target的proxy属性上，通过target.proxy调用代理对象
+
+### 13.3 用途
+#### 13.3.1 实现数组的负数索引
+```
+const arr = [1, 2, 3]
+const handle = {
+  get (target, propKey, receive) {
+    const index = Number.parseInt(propKey)
+    if (index < 0 && target.length + index) {
+      propKey = (target.length + index).toString()
+    } else if (index < 0){
+      return undefined
+    }
+    Reflect.get(target, propKey, receive)
+  }
+}
+```
+#### 13.3.2 通过get set配合可以实现内部属性
+```
+// 下划线开头的属性读写一律报错
+const handle = {
+  get (target, propKey, receive) {
+    if (propKey.startsWith('_')) {
+      throw new Error(`Invalid attempt to get private "${propKey}" property`)
+    }
+    return Reflect.get(target, propKey, receive)
+  },
+  set (target, propKey, value, receive) {
+    if (propKey.startsWith('_')) {
+      throw new Error(`Invalid attempt to set private "${propKey}" property`)
+    }
+    target[propKey] = value
+    return true
+  }
+}
+const proxy = new Proxy({_a: 1}, handle)
+export default proxy
+```
+
+### 13.4 实例方法
+#### 13.4.1 get(target, propKey[, receiver]) 第一个参数为目标对象，第二个参数为属性名，第三个参数为实际执行拦截函数的对象（一般是代理对象，特殊情况下不是代理对象）
+```
+const target = {
+  name: 'lilei'
+}
+const handle = {
+  get(target, propKey, receiver) {
+    if(propKey in target) {
+      return target[propKey]
+    } else {
+      return '没有这个属性'
+    }
+  }
+}
+const proxy = new Proxy(target, handle)
+console.log(proxy4.name) // 'lilei'
+console.log(proxy4.dd)   // '没有这个属性'
+```
+
+#### 13.4.2 set(target, propKey, value[, receiver])，严格模式下set必须要返回true，否则报错
+```
+const handle = {
+  set(target, propKey, value, receiver) {
+    if(propKey === 'age') {
+      if(typeof value === 'number') {
+        target[propKey] = value
+      } else {
+        throw new Error('age is not a number')
+      }
+    } else {
+      target[propKey] = value
+    }
+    return true
+  }
+}
+const proxy = new Proxy({}, handle)
+proxy.age = 123
+```
+
+#### 13.4.3 apply(target, ctx, args)，第一个参数为目标对象(函数)，第二个参数是目标对象的上下文对象，第三个参数为目标对象的参数数组
+// apply拦截函数的调用、call、apply操作
+```
+// 默认
+const handle = {
+  apply (target, ctx, args) {
+    return Reflect.apply(...arguments)
+  }
+}
+
+const sum = function(a, b) {
+  return a+b
+}
+const handle = {
+  apply(target, ctx, args) {
+    return '求和函数被拦截'
+  }
+}
+const proxy = new Proxy(sum, handle)
+
+proxy(1, 2) // 求和函数被拦截
+// 执行代理对象的时候，就会被apply拦截
+```
+
+#### 13.4.4 has(target, prop)
+```
+// 默认handler
+const handler = {
+  has (target, prop) {
+    return prop in target
+  }
+}
+
+// has可用于隐藏内部属性而不被in运算符发现
+const handle = {
+  has (target, prop) {
+    if (prop.startsWith('_')) {
+      return false
+    }
+    return prop in target
+  }
+}
+const target = {_a:1}
+const proxy = new Proxy(target, handle)
+'_a' in proxy // false
+```
+// 如果原对象不可配置或者禁止扩展，这时has拦截会报错
+
+#### 13.4.5 construct(target, args, newTarget) args:构造函数对参数对象 newTarget:创造实例对象时，new命令作用的构造函数(即new Proxy得到的对象)
+```
+// 默认handler
+const handler = {
+  construct (target, args, newTarget) {
+    return new target(...args) // 必须返回一个对象
+  }
+}
+```
+
+#### 13.4.6 deleteProperty(target, key) 拦截delete操作，和set一样必须返回true
+```
+// 默认handler
+const handler = {
+  deleteProperty (target, key) {
+    delete target[key]
+    return true
+  }
+}
+// 可用于阻止删除内部变量
+```
+
+#### 13.4.7 defineProperty(target, key, description) 拦截object.definedProperty()
+```
+var handler = {
+  defineProperty (target, key, descriptor) {
+    return false;
+  }
+};
+var target = {};
+var proxy = new Proxy(target, handler);
+proxy.foo = 'bar' // 不会生效
+```
+
+#### 13.4.8 getOwnPropertyDescriptor(target, key) 返回一个属性描述对象或者undefined 拦截Object.getOwnPropertyDescriptor()
+```
+// 获得私有属性的描述对象时拦截掉，返回undefined，其他情况正常返回
+var handler = {
+  getOwnPropertyDescriptor (target, key) {
+    if (key[0] === '_') {
+      return
+    }
+    return Object.getOwnPropertyDescriptor(target, key)
+  }
+};
+var target = { _foo: 'bar', baz: 'tar' }
+var proxy = new Proxy(target, handler)
+Object.getOwnPropertyDescriptor(proxy, 'wat')
+// undefined
+Object.getOwnPropertyDescriptor(proxy, '_foo')
+// undefined
+Object.getOwnPropertyDescriptor(proxy, 'baz')
+// { value: 'tar', writable: true, enumerable: true, configurable: true }
+```
+
+#### 13.4.9 getPrototypeOf(target) 拦截获取原型对象，如
+* `Object.prototype.__proto__`
+* `Object.prototype.isPrototypeOf()`
+* `Object.getPrototypeOf()`
+* `Reflect.getPrototypeOf()`
+* `instanceof`
+// 必须返回对象或null，否则报错
+```
+var proto = {};
+var p = new Proxy({}, {
+  getPrototypeOf(target) {
+    return proto;
+  }
+});
+Object.getPrototypeOf(p) === proto // true
+```
+
+#### 13.4.10 isExtensible(target) 拦截Object.isExtensible操作，只能返回布尔值
+```
+var p = new Proxy({}, {
+  isExtensible: function(target) {
+    console.log("called");
+    return true;
+  }
+});
+
+Object.isExtensible(p)
+// "called"
+// true
+```
+
+#### 13.4.11 ownKeys(target) 拦截对象自身属性的读取操作,如:
+* `Object.getOwnPropertyNames()`
+* `Object.getOwnPropertySymbols()`
+* `Object.keys()`
+* `for...in循环`
+```
+let target = {
+  a: 1,
+  b: 2,
+  c: 3
+}
+let handler = {
+  ownKeys(target) {
+    return ['a']
+  }
+}
+let proxy = new Proxy(target, handler)
+
+Object.keys(proxy) // [ 'a' ]
+```
+
+#### 13.4.12 preventExtensions(target) 拦截Object.preventExtensions()，必须返回一个布尔值
+
+#### 13.4.13 setPrototypeOf(target) 拦截Object.setPrototypeOf
+```
+var handler = {
+  setPrototypeOf (target, proto) {
+    throw new Error('Changing the prototype is forbidden')
+  }
+}
+var proto = {}
+var target = function () {}
+var proxy = new Proxy(target, handler)
+Object.setPrototypeOf(proxy, proto)
+// Error: Changing the prototype is forbidden
+```
+
+### 13.5 Proxy的静态方法 Proxy.revocable
+可用于提供一次性的代理访问
+```
+const obj = {
+  name: 'lilei',
+  age: 14
+}
+const handle = {
+  get(target, key) {
+    return target[key]
+  }
+}
+const [proxy, revock] = Proxy.revocable(obj, handle)
+console.log(proxy.age) // 调用revock后会移除proxy实例
+revock()
+console.log(proxy.name)  // 再次访问时会报错
+```
+
+### 13.6 Proxy的应用
