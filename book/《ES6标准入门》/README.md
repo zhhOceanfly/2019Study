@@ -1785,7 +1785,7 @@ Object.fromEntries([
 
 ## 11 Symbol
 
-Symbol 用于作为对象的属性，达到对象属性名永远不重复的效果。
+Symbol 用于作为对象的属性名，达到对象属性名永远不重复的效果。
 
 创建 Symbol，可以接收一个字符串参数（不是字符串的参数会被强转为字符串），这个参数是该 Symbol 的描述，主要用于打印出来的时候好识别
 
@@ -1835,7 +1835,7 @@ symbol.description // hello
 
 ### 11.2 用途
 
-1. 作为对象的属性，防止属性名重复
+1. 作为对象的属性名，防止属性名重复
 2. 设置为常量的值，保证常量不会重复
 
 ### 11.3 遍历对象 Symbol 属性 Object.getOwnPropertySymbols
@@ -2168,7 +2168,6 @@ const handle = {
 const proxy = new Proxy(sum, handle)
 
 proxy(1, 2) // 求和函数被拦截
-// 执行代理对象的时候，就会被apply拦截
 ```
 
 #### 13.4.4 has(target, prop)
@@ -2337,3 +2336,314 @@ console.log(proxy.name)  // 再次访问时会报错
 ```
 
 ### 13.6 Proxy的应用
+
+## 14 Reflect
+Reflect是为了操作对象而提出的API，取代的操作有：
+* 属于语言内部的方法，如Object.definedProperty
+* 修改某些Object方法，使其返回值合理，如Object.defineProperty(obj, name, desc)在无法定义属性时，会抛出一个错误，而Reflect.defineProperty(obj, name, desc)则会返回false。
+* 将命令式的操作改为函数行为，如in delete等操作符
+* Reflect对象的方法与Proxy对象的方法一一对应，只要是Proxy对象的方法，就能在Reflect对象上找到对应的方法。这就让Proxy对象可以方便地调用对应的Reflect方法，完成默认行为，作为修改行为的基础。（使Proxy更加的简单）
+
+### 14.1 Reflect.get(target, name[, receiver]) receiver: 可用于指定取值函数(getter)的this
+Reflect.get方法查找并返回target对象的name属性，如果没有该属性，则返回undefined
+// 第一个参数不是对象则报错
+
+### 14.2 Reflect.set(target, name, value, receiver) receiver: 可用于指定赋值函数(setter)的this
+Reflect.set方法设置target对象的name属性等于value
+// 第一个参数不是对象则报错
+
+### 14.3 Reflect.has(obj, name)
+Reflect.has方法对应name in obj里面的in运算符
+// 第一个参数不是对象则报错
+
+### 14.4 Reflect.deleteProperty(obj, name)
+Reflect.deleteProperty方法等同于delete obj[name]，用于删除对象的属性，返回一个布尔值，删除成功或删除的属性不存在则返回true，删除失败或删除的属性还存在则返回false
+// 第一个参数不是对象则报错
+
+### 14.5 Reflect.construct(target, args)
+Reflect.construct方法等同于new target(...args)，这提供了一种不使用new，来调用构造函数的方法
+// 第一个参数不是对象则报错
+
+### 14.6 Reflect.getPrototypeOf(obj)
+Reflect.getPrototypeOf方法用于读取对象的__proto__属性，对应Object.getPrototypeOf(obj)
+// 第一个参数不是对象则报错。Object.getPrototypeOf(obj)中，参数不是对象则会转换为对象
+
+### 14.7 Reflect.setPrototypeOf(obj, newProto)
+Reflect.setPrototypeOf方法用于设置目标对象的原型（prototype），对应Object.setPrototypeOf(obj, newProto)方法。它返回一个布尔值，表示是否设置成功。
+// 第一个参数不是对象则报错。Object.setPrototypeOf(obj, newProto)中，第一个参数不是对象则会返回第一个参数本身（第一个参数是undefined | null时直接报错，因为转换为对象的时候会报错）
+
+### 14.8 Reflect.apply(func, thisArg, args)
+Reflect.apply方法等同于Function.prototype.apply.call(func, thisArg, args)，用于绑定this对象后执行给定函数
+
+一般来说，如果要绑定一个函数的this对象，可以这样写fn.apply(obj, args)，但是如果函数定义了自己的apply方法，就只能写成Function.prototype.apply.call(fn, obj, args)，采用Reflect对象可以简化这种操作。
+```
+const ages = [11, 33, 12, 54, 18, 96];
+
+// 旧写法
+const youngest = Math.min.apply(Math, ages);
+const oldest = Math.max.apply(Math, ages);
+const type = Object.prototype.toString.call(youngest);
+
+// 新写法
+const youngest = Reflect.apply(Math.min, Math, ages);
+const oldest = Reflect.apply(Math.max, Math, ages);
+const type = Reflect.apply(Object.prototype.toString, youngest, []);
+```
+
+### 14.9 Reflect.defineProperty(target, propertyKey, attributes)
+Reflect.defineProperty方法基本等同于Object.defineProperty，用来为对象定义属性。未来，后者会被逐渐废除，请从现在开始就使用Reflect.defineProperty代替它
+```
+function MyDate() {
+  /*…*/
+}
+// 旧写法
+Object.defineProperty(MyDate, 'now', {
+  value: () => Date.now()
+})
+// 新写法
+Reflect.defineProperty(MyDate, 'now', {
+  value: () => Date.now()
+})
+```
+// 第一个参数不是对象则报错
+
+### 14.10 Reflect.getOwnPropertyDescriptor(target, propertyKey)
+Reflect.getOwnPropertyDescriptor基本等同于Object.getOwnPropertyDescriptor，用于得到指定属性的描述对象，将来会替代掉后者
+```
+var myObject = {}
+Object.defineProperty(myObject, 'hidden', {
+  value: true,
+  enumerable: false,
+})
+
+// 旧写法
+var theDescriptor = Object.getOwnPropertyDescriptor(myObject, 'hidden')
+
+// 新写法
+var theDescriptor = Reflect.getOwnPropertyDescriptor(myObject, 'hidden')
+```
+// 第一个参数不是对象则报错
+
+### 14.11 Reflect.isExtensible (target)
+Reflect.isExtensible方法对应Object.isExtensible，返回一个布尔值，表示当前对象是否可扩展。
+```
+const myObject = {}
+// 旧写法
+Object.isExtensible(myObject) // true
+// 新写法
+Reflect.isExtensible(myObject) // true
+```
+// 第一个参数不是对象则报错
+
+### 14.12 Reflect.preventExtensions(target)
+Reflect.preventExtensions对应Object.preventExtensions方法，用于让一个对象变为不可扩展。它返回一个布尔值，表示是否操作成功
+```
+var myObject = {}
+// 旧写法
+Object.preventExtensions(myObject) // Object {}
+// 新写法
+Reflect.preventExtensions(myObject) // true
+```
+// 第一个参数不是对象则报错
+
+### 14.13 Reflect.ownKeys (target)
+Reflect.ownKeys方法用于返回对象的所有属性，基本等同于Object.getOwnPropertyNames与Object.getOwnPropertySymbols之和
+```
+var myObject = {
+  foo: 1,
+  bar: 2,
+  [Symbol.for('baz')]: 3,
+  [Symbol.for('bing')]: 4,
+};
+// 旧写法
+Object.getOwnPropertyNames(myObject)
+// ['foo', 'bar']
+Object.getOwnPropertySymbols(myObject)
+//[Symbol(baz), Symbol(bing)]
+// 新写法
+Reflect.ownKeys(myObject)
+// ['foo', 'bar', Symbol(baz), Symbol(bing)]
+```
+// 第一个参数不是对象则报错
+
+### 14.14 练习 使用proxy结合Reflect实现观察者模式
+//  观察者模式（Observer mode）指的是函数自动观察数据对象，一旦对象有变化，函数就会自动执行
+```
+const queuedObservers = new Set()
+// 向观察者集合中添加观察者
+const observe = fn => queuedObservers.add(fn)
+// 添加观察目标
+const observable = obj => new Proxy(obj, {set})
+function set(target, key, value, receiver) {
+  const result = Reflect.set(target, key, value, receiver)
+  queuedObservers.forEach(observer => observer())
+  return result
+}
+
+
+// 设置观察者与观察目标
+const fn = () => console.log('执行观察者函数')
+observe(fn)
+const obj = {
+  name: 'lilei',
+  age: 13
+}
+observable(obj)
+
+
+obj.age = 14 // 执行观察者函数
+```
+
+## 15 Promise
+### 15.1 习题
+### 15.1.1
+```
+const promise = new Promise((resolve, reject) => {
+  console.log(1)
+  resolve()
+  console.log(2)
+})
+promise.then(() => {
+  console.log(3)
+})
+console.log(4)
+// 1 2 4 3
+```
+
+### 15.1.2
+```
+const promise1 = new Promise((resolve, reject) => {
+  setTimeout(() => {
+    resolve('success')
+  }, 1000)
+})
+const promise2 = promise1.then(() => {
+  throw new Error('error!!!')
+})
+console.log('promise1', promise1)
+console.log('promise2', promise2)
+setTimeout(() => {
+  console.log('promise1', promise1)
+  console.log('promise2', promise2)  
+}, 2000)
+```
+
+### 15.1.3
+```
+const promise = new Promise((resolve, reject) => {
+  resolve('success1')
+  reject('error')
+  resolve('success2')
+})
+
+promise
+  .then((res) => {
+    console.log('then: ', res)
+    return undefined
+  })
+  .catch((err) => {
+    console.log('catch: ', err)
+  })
+//
+```
+
+### 15.1.4
+```
+new Promise(resolve => {
+  resolve(value)
+})
+Promise.resolve(1)
+  .then((res) => {
+    console.log(res)
+    return 2
+  })
+  .catch((err) => {
+    return 3
+  })
+  .then((res) => {
+    console.log(res)
+  })
+// 1 2
+```
+
+### 15.1.5
+```
+const promise = new Promise((resolve, reject) => {
+  setTimeout(() => {
+    console.log('once') // 1 once
+    resolve('success')
+  }, 1000)
+})
+const start = Date.now()
+promise.then((res) => {
+  console.log(res, Date.now() - start)
+})
+promise.then((res) => {
+  console.log(res, Date.now() - start)
+})
+```
+
+### 15.1.6
+```
+// 错了，再做
+Promise.resolve()
+  .then(() => {
+    return new Error('error!!!')
+  })
+  .then((res) => {
+    console.log('then: ', res)
+  })
+  .catch((err) => {
+    console.log('catch: ', err)
+  })
+```
+
+### 15.1.7
+```
+const promise = Promise.resolve()
+  .then(() => {
+    return promise
+  })
+promise.catch(console.error)
+```
+
+### 15.1.8
+```
+Promise.resolve(1)
+  .then(2)
+  .then(Promise.resolve(3))
+  .then(console.log)
+```
+
+### 15.1.9
+```
+Promise.resolve()
+  .then(function success (res) {
+    throw new Error('error')
+  }, function fail1 (e) {
+    console.error('fail1: ', e)
+  })
+  .catch(function fail2 (e) {
+    console.error('fail2: ', e)
+  })
+```
+
+### 15.1.10
+```
+process.nextTick(() => {
+  console.log('nextTick')
+})
+Promise.resolve()
+  .then(() => {
+    console.log('then')
+  })
+setImmediate(() => {
+  console.log('setImmediate')
+})
+console.log('end')
+```
+
+### 15.2 实现一个promise的polyfill
+```
+
+```
