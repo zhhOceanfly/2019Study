@@ -2647,3 +2647,108 @@ console.log('end')
 ```
 
 ```
+
+## 16 Iterator 和 for...of
+### 16.1 概念
+为统一各类数据结构的访问接口（遍历所有成员接口），同时实现for...of而提出了遍历器接口，实现该接口的数据结构可以被for...of，扩展运算符等遍历。
+遍历器接口名是内置的Symbol值Symbol.iterator，也可以通过该属性名调用遍历器接口。
+```
+const iterator = [1, 2][Symbol.iterator]()
+```
+// 遍历器接口返回一个链表结构的head指针，调用next方法可以让指针指向下一个链表元素，同时返回链表元素的值（一个包含value属性和done属性的对象）
+
+### 16.2 默认Iterator接口
+原生具备Iterator接口的数据结构有
+1. Array
+2. String
+3. Map
+4. Set
+5. TypedArray
+6. 函数的arguments对象
+7. NodeList对象
+
+类数组对象部署遍历器接口，只需要引用数组的遍历器接口即可
+```
+NodeList.prototype[Symbol.Iterator] = [][Symbol.Iterator]
+```
+
+### 16.3 默认调用遍历器接口的场合
+#### 16.3.1 解构赋值
+```
+const [a, b] = [1, 2]
+```
+
+#### 16.3.2 扩展运算符
+```
+const arr = [1, 2]
+const add = (a, b) => a+b
+add(...arr)
+```
+
+#### 16.3.3 yield*
+yield*(生成器章节的内容)后面跟的是一个可遍历的结构，它会调用该结构的遍历器接口。
+```
+let generator = function* () {
+  yield 1
+  yield* [2,3,4]
+  yield 5
+}
+var iterator = generator()
+iterator.next() // { value: 1, done: false }
+iterator.next() // { value: 2, done: false }
+iterator.next() // { value: 3, done: false }
+iterator.next() // { value: 4, done: false }
+iterator.next() // { value: 5, done: false }
+iterator.next() // { value: undefined, done: true }
+```
+
+#### 16.3.4 其他场合
+1. for...of
+2. Array.from()
+3. Map(), Set(), WeakMap(), WeakSet() 构造函数（比如new Map([['a',1],['b',2]])）
+4. Promise.all()
+5. Promise.race()
+
+### 16.4 Iterator 接口与 Generator 函数
+Symbol.iterator方法的最简单实现，还是使用Generator函数，生成器函数会返回一个遍历器对象（链表的head指针）
+```
+let myIterable = {
+  [Symbol.iterator]: function* () {
+    yield 1
+    yield 2
+    yield 3
+  }
+}
+[...myIterable] // [1, 2, 3]
+// 或者采用下面的简洁写法
+let obj = {
+  * [Symbol.iterator]() {
+    yield 'hello'
+    yield 'world'
+  }
+}
+for (let x of obj) {
+  console.log(x);
+}
+// "hello"
+// "world"
+```
+
+### 16.5 遍历器对象的 return()，throw()
+遍历器对象除了具有next方法，还可以具有return方法和throw方法。如果你自己写遍历器对象生成函数，那么next方法是必须部署的，return方法和throw方法是否部署是可选的。
+
+return方法的使用场合是，如果for...of循环提前退出（通常是因为出错，或者有break语句），就会调用return方法。如果一个对象在完成遍历前，需要清理或释放资源，就可以部署return方法。
+```
+for(let item of arr) {
+  break // 这是会调用遍历器对象的return方法
+}
+```
+
+throw方法主要是配合 Generator 函数使用，一般的遍历器对象用不到这个方法。
+
+### 16.6 注意事项
+* 遍历字符串时，可以识别超过4位16进制的unicode码
+
+### 16.7 与其他遍历方式的对你
+1. forEach,map等方法遍历的缺点是不能使用return，break语句来结束循环
+2. for...in 缺点：会遍历原型链上的属性，遍历对象时，顺序不是添加顺序
