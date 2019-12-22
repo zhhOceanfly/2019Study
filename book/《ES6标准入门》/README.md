@@ -2752,3 +2752,349 @@ throw方法主要是配合 Generator 函数使用，一般的遍历器对象用�
 ### 16.7 与其他遍历方式的对你
 1. forEach,map等方法遍历的缺点是不能使用return，break语句来结束循环
 2. for...in 缺点：会遍历原型链上的属性，遍历对象时，顺序不是添加顺序
+
+## 17 Generator函数的语法
+Generator函数是ES6提出的一种异步编程解决方案。可以将Generator理解为一个状态机，内部封装了多个状态。
+
+执行 Generator 函数会返回一个遍历器对象，也就是说，Generator 函数除了状态机，还是一个遍历器对象生成函数。返回的遍历器对象，可以依次遍历 Generator 函数内部的每一个状态。
+
+### 17.1 特点
+* 声明方式 function*
+* 函数内部使用 yield表达式定义状态
+
+### 17.2 使用
+```
+function* helloWorldGenerator() {
+  yield 'hello'
+  yield 'world'
+  return 'ending'
+}
+
+var hw = helloWorldGenerator() // 返回一个遍历器对象
+hw.next() // { value: 'hello', done: false }
+hw.next() // { value: 'world', done: false }
+hw.next() // { value: 'ending', done: true }
+hw.next() // { value: undefined, done: true }
+```
+
+### 17.3 yield表达式
+* 遇到yield表达式，就暂停执行后面的操作，并将紧跟在yield后面的那个表达式的值，作为返回的对象的value属性值。
+* 下一次调用next方法时，再继续往下执行，直到遇到下一个yield表达式。
+* 如果没有再遇到新的yield表达式，就一直运行到函数结束，直到return语句为止，并将return语句后面的表达式的值，作为返回的对象的value属性值。
+* 如果该函数没有return语句，则返回的对象的value属性值为undefined。
+
+### 17.4 通过Generator实现Symbol.Iterator接口
+```
+const obj = {
+  first: 1,
+  second: 2,
+  third: 3,
+  *[Symbol.Iterator]() {
+    yield this.first
+    yield this.second
+    yield this.third
+  }
+}
+[...obj] // 1 2 3
+```
+### 17.5 next方法的参数
+next方法可以接收参数传递给Generator函数(状态机外部改变状态机内部)。yield表达式本身返回值为undefined,next方法接收到的参数会作为yield表达式的返回值。
+```
+function* f() {
+  var i = 0
+  while(true) {
+    var reset = yield i
+    if (reset != undefined) i = reset
+    i++
+  }
+}
+var g = f()
+g.next() // { value: 0, done: false }
+g.next() // { value: 1, done: false }
+g.next(100) // { value: 101, done: false }
+```
+### 17.6 练习
+#### 17.6.1 使用Generator函数和for...of实现一个斐波那契数列
+```
+function* f() {
+  let i = 1
+  let first = 1
+  let second = 2
+  while (true) {
+    if (i === 1) {
+      yield first
+    } else if (i === 2) {
+      yield second
+    } else {
+      yield first + second;
+      [first, second] = [second, first + second]
+    }
+    i++
+  }
+}
+
+for (let i of f(10)) {
+  if (i > 1000) break
+  console.log(i)
+}
+```
+
+#### 17.6.2 为对象添加遍历器接口
+```
+function* objectEntries() {
+  let propKeys = Object.keys(this)
+
+  for (let propKey of propKeys) {
+    yield [propKey, this[propKey]]
+  }
+}
+let jane = { first: 'Jane', last: 'Doe' }
+jane[Symbol.iterator] = objectEntries
+for (let [key, value] of jane) {
+  console.log(`${key}: ${value}`)
+}
+```
+
+### 17.7 Generator.prototype.throw
+Generator 函数返回的遍历器对象，都有一个throw方法，可以在函数体外抛出错误，然后在 Generator 函数体内捕获。(可以看做在Generator内容部抛出一个错误，错误可以在内部被捕获，内部没有捕获时，还可以在外部被捕获)
+
+throw的参数会传递给catch
+```
+var g = function* () {
+  try {
+    yield
+  } catch (e) {
+    console.log('内部捕获', e)
+  }
+}
+
+var i = g()
+i.next()
+i.throw(new Error('a'))  // 内部捕获 Error: a 
+```
+// throw方法抛出的错误若在Generator内部被捕获，则可以继续执行到下一个yield表达式。
+
+### 17.8 Generator.prototype.return
+Generator 函数返回的遍历器对象，还有一个return方法，可以返回给定的值，并且终结遍历 Generator 函数。
+```
+function* gen() {
+  yield 1
+  yield 2
+  yield 3
+}
+var g = gen()
+g.next()        // { value: 1, done: false }
+g.return('foo') // { value: "foo", done: true }
+g.next()        // { value: undefined, done: true }
+```
+
+### 17.9 理解next、throw、return
+他们都是为了改变状态，并使用参数改变yield表达式的返回值的。
+
+* next()是将yield表达式替换成一个值。
+* throw()是将yield表达式替换成一个throw语句。
+* return()是将yield表达式替换成一个return语句。
+
+### 17.10 yield* 表达式
+如果在 Generator 函数内部，调用另一个 Generator 函数。需要在前者的函数体内部，自己手动完成遍历。
+```
+function* foo() {
+  yield 'a'
+  yield 'b'
+}
+function* bar() {
+  yield 'x'
+  // 手动遍历 foo()
+  for (let i of foo()) {
+    console.log(i)
+  }
+  yield 'y'
+}
+for (let v of bar()){
+  console.log(v)
+}
+// x a b y
+```
+
+yield* 就是一个语法糖，用于简化Generator函数中使用Generator函数的操作。
+// 上述代码bar可以简化为
+```
+function* bar() {
+  yield 'x'
+  yield* foo()
+  yield 'y'
+}
+// 等价于
+function* bar() {
+  yield 'x'
+  yield 'a'
+  yield 'b'
+  yield 'y'
+}
+// 等价于 (这个是正确的Generator函数中调用Generator函数的方法)
+function* bar() {
+  yield 'x'
+  for (let item of foo()[Symbol.Iterator]) {
+    yield item
+  }
+  yield 'y'
+}
+```
+// 上面例子中可以看出yiels* 后面的表达式必须部署了遍历器接口
+
+被调用的Generator函数中若存在return语句，则return语句的返回值会作为yield*表达式的返回值
+
+#### 17.10.1 yield*的用途
+##### 17.10.1.1 取出嵌套数组中的成员
+```
+const arr = [1, [2], [[3]], [[[4]]]]
+function* generator(arr) {
+  if (Array.isArray(arr)) {
+    for (let item of arr) {
+      yield* generator(item)
+    }
+  } else {
+    yield arr
+  }
+}
+
+console.log([...generator(arr)])
+```
+### 17.11 对象属性若为Generator函数，则可以简写
+```
+const obj = {
+  generator: function* () {}
+}
+// 可简写为
+const obj = {
+  * generator() {}
+}
+```
+
+### 17.12 Generator的this
+Generator 函数总是返回一个遍历器，ES6 规定这个遍历器是 Generator 函数的实例，也继承了 Generator 函数的prototype对象上的方法。
+
+但是生成器内部使用this设置属性时，遍历器对象并不会得到这个属性。因为Generator函数返回一个继承自己原型的对象，与new操作不同。
+```
+function* g() {
+  this.a = 11
+}
+let obj = g()
+obj.next()
+obj.a // undefined
+```
+
+Generator与new操作符联用会报错
+
+### 17.13 Generator的意义
+#### 17.13.1 协程
+Generator 函数是 ES6 对协程的实现，但属于不完全实现。Generator 函数被称为“半协程”（semi-coroutine），意思是只有 Generator 函数的调用者，才能将程序的执行权还给 Generator 函数。如果是完全执行的协程，任何函数都可以让暂停的协程继续执行。
+
+### 17.13.2 执行环境栈
+Generator函数的执行环境栈在暂停的时候不会推出栈
+
+### 17.14 Generator的应用
+#### 17.14.1 异步操作同步化
+原生异步操作
+```
+// 简写版XMLHttpRequest
+makeAjaxCall("http://some/login", {}, member => { // 登录并获得用户信息
+  member = JSON.parse(member)
+  makeAjaxCall("http://some/getData", member, data => { //登录后获取数据
+    console.log(JSON.parse(data))
+  })
+})
+// 典型的回调地狱写法
+```
+promise版本
+```
+// 简写XMLHttpRequest
+function request(url) {
+  return new Promise(resolve => {
+    makeAjaxCall(url, response => { 
+      resolve(JSON.parse(response))
+    })
+  })
+}
+function main() {
+  request("http://some/login")
+    .then(member => {
+      return request("http://some/getData", member)
+    })
+    .then(data => {
+      coknsole.log(data)
+    })
+}
+main()
+// promise解决了回调地狱问题，但引入了多个then导致页面混乱问题
+```
+Generator版本
+```
+function request(url, data) {
+  makeAjaxCall(url, data, response => { // 简写XMLHttpRequest
+    it.next(JSON.parse(response))
+  })
+}
+function* main() {
+  // 先登录后获取数据
+  const member = yield request("http://some/login")
+  const data = yield request("http://some/getData", member)
+  console.log(data)
+}
+const it = main()
+it.next()
+// 使异步操作完全同步化书写，但需要自己控制状态机启动与执行
+```
+
+#### 17.14.2 控制流管理
+```
+// 原生 回调地狱写法
+step1(function (value1) {
+  step2(value1, function(value2) {
+    step3(value2, function(value3) {
+      step4(value3, function(value4) {
+        // Do something with value4
+      })
+    })
+  })
+})
+
+// promise 引入了大量promise语句
+Promise.resolve(step1)
+  .then(step2)
+  .then(step3)
+  .then(step4)
+  .then(function (value4) {
+    // Do something with value4
+  }, function (error) {
+    // Handle any error from step1 through step4
+  })
+  .done()
+
+// Generator 需要引入一个函数使控制流自动执行下去 注意 这里只能执行同步的代码
+function* longRunningTask(value1) {
+  try {
+    var value2 = yield step1(value1);
+    var value3 = yield step2(value2);
+    var value4 = yield step3(value3);
+    var value5 = yield step4(value4);
+    // Do something with value4
+  } catch (e) {
+    // Handle any error from step1 through step4
+  }
+}
+
+scheduler(longRunningTask(initialValue))
+
+// 通用的自动的状态机执行函数
+function scheduler(task) {
+  var taskObj = task.next(task.value)
+  // 如果Generator函数未结束，就继续调用
+  if (!taskObj.done) {
+    task.value = taskObj.value
+    scheduler(task)
+  }
+}
+```
+
+### 17.14.3 部署遍历器接口
