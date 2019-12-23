@@ -3420,3 +3420,150 @@ import a from a.js
 console.log(a) // 这时a的值为undefined
 ```
 // 通过顶层await可以实现异步加载模块（global模块中获得用户信息，等待获取成功后其他模块才可以使用，当前项目中使用promise解决的）
+
+## 20 class的基本语法
+特点：
+1. 类的内部所有定义的方法，都是不可枚举的，这一点与ES5中Point.prototype.toStirng定义的不同，ES5中是可枚举的。
+```
+class Point {
+  constructor(x, y) {
+  }
+  toString() {
+  }
+}
+Object.keys(Point.prototype)  // []
+Object.getOwnPropertyNames(Point.prototype) // ["constructor","toString"]
+```
+2. 类直接调用会报错，只能通过new调用
+3. 与ES5相同，类的内部也可以通过get set定义取值函数与存值函数。存值函数和取值函数是设置在属性的 Descriptor 对象上的。
+```
+class CustomHTMLElement {
+  constructor(element) {
+    this.element = element;
+  }
+  get html() {
+    return this.element.innerHTML;
+  }
+  set html(value) {
+    this.element.innerHTML = value;
+  }
+}
+var descriptor = Object.getOwnPropertyDescriptor(
+  CustomHTMLElement.prototype, "html"
+);
+"get" in descriptor  // true
+"set" in descriptor  // true
+```
+4. 与函数一样，类也可以使用表达式的形式定义。通过class表达式，可以写出立即执行的new操作
+```
+const MyClass = class Me {
+  getClassName() {
+    return Me.name
+  }
+}
+```
+
+注意点：
+1. 类和模块的内部默认为严格模式
+2. class定义的变量，也不存在变量声明提示
+3. class变量具有name属性，返回class名
+4. 注意隐式绑定的this丢失
+```
+class Logger {
+  printName(name = 'there') {
+    this.print(`Hello ${name}`)
+  }
+  print(text) {
+    console.log(text)
+  }
+}
+const logger = new Logger()
+const { printName } = logger
+printName() // TypeError: Cannot read property 'print' of undefined   这时的this指向undefined
+```
+解决方案
+```
+// 在构造函数中硬绑定this，这样就不会出现隐式绑定this丢失的问题
+class Logger {
+  constructor() {
+    this.printName = this.printName.bind(this)
+  }
+}
+// 另一种方式是使用箭头函数
+```
+
+### 20.1 静态方法
+* 方法名前增加static即为静态方法
+* 静态方法与实例方法可以重名
+* 父类的静态方法可以被子类继承
+* 子类可以通过super对象调用父类的静态方法
+```
+class Foo {
+  static classMethod() {
+    return 'hello'
+  }
+}
+class Bar extends Foo {
+  static classMethod() {
+    return `${super.classMethod()}, too`
+  }
+}
+
+Bar.classMethod() // "hello, too"
+```
+
+### 20.2 实例属性
+实例属性除了能在构造函数中定义外，还能在类的顶层定义
+```
+class IncreasingCounter {
+  _count = 0
+}
+```
+
+### 20.3 静态属性
+暂时不支持在类的内容定义静态属性
+
+### 20.4 私有方法与私有属性
+暂时不支持在类的内容定义私有方法与私有属性 // ES2020会出现，保持关注
+
+### 20.5 new.target属性
+在构造函数中使用，返回new命令作用域的构造函数，若不是通过new命令或Reflect.construct()调用的构造函数，则new.target的值为undefined。
+```
+// 可用于防止非法调用构造函数
+function Person(name) {
+  if (new.target !== undefined) {
+    this.name = name;
+  } else {
+    throw new Error('必须使用 new 命令生成实例');
+  }
+}
+```
+子类使用super时，父类构造函数中的new.target指向子类
+```
+class Square extends Rectangle {
+  constructor(age) {
+    super('lilei')
+    this.age = age
+  }
+}
+// 这时候父类的new.target指向Square
+```
+利用这个特点，可以写出不能独立使用、必须继承后才能使用的类（也就是抽象类）。
+```
+class Shape {
+  constructor() {
+    if (new.target === Shape) { // 核心
+      throw new Error('本类不能实例化')
+    }
+  }
+}
+class Rectangle extends Shape {
+  constructor(length, width) {
+    super()
+    // ...
+  }
+}
+
+var x = new Shape()  // 报错
+var y = new Rectangle(3, 4)  // 正确
+```
