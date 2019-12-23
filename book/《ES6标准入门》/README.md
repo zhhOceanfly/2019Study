@@ -3361,3 +3361,62 @@ function* gn() {
 co(gn)
 ```
 
+## 19 async
+async就是Generator函数的语法糖，他在语言层面实现了Generator函数自动流程管理，可以看做异步编程的终极解决方案。
+
+特点：
+* 在语言层面内置执行器，在函数前加上async即可实现自动流程管理
+* async与await比起*和yield，语义上更清晰
+* await后面可以接promise对象或其他任意类型
+* async函数返回的是一个promise对象
+* async函数内的所有await执行完毕时，async返回的promise对象状态才会转变为resolve，任意一个await后面的promise状态改为reject后async返回的promise状态改为rejected
+
+### 19.1 错误处理
+若async函数中抛出了错误，会导致Promise对象的状态转为rejected，任意一个await后面的promise状态改为rejected后，async函数返回的promise对象状态也会转为rejected，这时async函数会停止执行。
+
+若希望出错后依然执行，则需要使用try catch
+
+### 19.2 使用注意点
+不能对所有的异步操作都使用await，不存在互相依赖关系的应同时执行，而不是一个个执行
+```
+// 写法一
+let [foo, bar] = await Promise.all([getFoo(), getBar()])
+// 写法二
+let fooPromise = getFoo()
+let barPromise = getBar()
+let foo = await fooPromise
+let bar = await barPromise
+```
+
+async 函数可以保留运行堆栈。
+```
+const a = () => {
+  b().then(() => c())
+}
+```
+上面代码中，函数a内部运行了一个异步任务b()。当b()运行的时候，函数a()不会中断，而是继续执行。等到b()运行结束，可能a()早就运行结束了，b()所在的上下文环境已经消失了。如果b()或c()报错，错误堆栈将不包括a()。
+```
+const a = async () => {
+  await b()
+  c()
+}
+```
+上面代码中，b()运行的时候，a()是暂停执行，上下文环境都保存着。一旦b()或c()报错，错误堆栈将包括a()。
+// 错误栈堆一直不太了解，需要找资料看
+
+### 19.3 async函数的实现原理
+
+### 19.4 顶层await
+为什么需要顶层await
+```
+// a.js
+let a
+setTimeout(() => {
+  a = true
+}, 1000)
+export { a }
+// b.js
+import a from a.js
+console.log(a) // 这时a的值为undefined
+```
+// 通过顶层await可以实现异步加载模块（global模块中获得用户信息，等待获取成功后其他模块才可以使用，当前项目中使用promise解决的）
