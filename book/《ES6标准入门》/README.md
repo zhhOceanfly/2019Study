@@ -3059,7 +3059,7 @@ step1(function (value1) {
   })
 })
 
-// promise 引入了大量promise语句
+// promise 引入了大量promise语句，使代码变得冗余
 Promise.resolve(step1)
   .then(step2)
   .then(step3)
@@ -3098,3 +3098,266 @@ function scheduler(task) {
 ```
 
 ### 17.14.3 部署遍历器接口
+
+## 18 Generator函数的异步应用
+### 18.1 传统的异步编程方法
+* 回调函数
+* 事件监听
+* 发布/订阅
+* Promise
+
+### 18.2 Generator的异步编程方法
+Generator实现 “协程” 来达到异步编程
+1. 协程A开始执行。
+2. 协程A执行到一半，进入暂停，执行权转移到协程B(B就是异步任务)。
+3. （一段时间后）协程B交还执行权。
+4. 协程A恢复执行。
+
+```
+// 代码形式 其中readFile函数中还有执行完毕之后将执行权还给Generator的操作，也就是执行Generator中的yield
+function* asyncJob() {
+  // ...其他代码
+  var f = yield readFile(fileA);
+  // ...其他代码
+}
+```
+// 这种写法的好处是几乎和同步操作写法一样
+
+### 18.3 协程的Generator函数实现
+```
+var fetch = require('node-fetch')
+
+// 实际执行的代码
+function* gen(){
+  cosnt url = 'https://api.github.com/users/github'
+  cosnt result = yield fetch(url)
+  console.log(result.bio)
+}
+
+// 控制Generator执行的代码
+const g = gen()
+cosnt result = g.next() // fetch模块返回的是promise对象
+// 控制请求结束之后将执行权还给Generator
+result.value
+  .then(data => {
+    return data.json()
+  })
+  .then(data => {
+    g.next(data)
+  })
+```
+// Generator函数中可以看出书写的代码与同步代码几乎一致，但引入了流程控制部分的代码
+
+### 18.4 thunk函数
+Thunk 函数是自动执行 Generator 函数的一种方法(不需要我们自己控制Generator的流程)。
+
+#### 18.4.1 thunk函数是什么
+```
+function f(m) {
+  return m * 2;
+}
+f(1 + 5)
+// C中会先对表达式进行计算，1+5=6，然后调用f(6)，这可能会导致性能损失
+// 使用thunk函数后 等同于
+var thunk = function () {
+  return 1 + 5
+}
+function f(thunk) {
+  return thunk() * 2
+}
+```
+这就是 Thunk 函数的定义，它是“传名调用”的一种实现策略，用来替换某个表达式。
+
+#### 18.4.2 js中的thunk函数
+JavaScript 语言是传值调用，它的 Thunk 函数含义有所不同。在 JavaScript 语言中，Thunk 函数替换的不是表达式，而是多参数函数，将其替换成一个只接受回调函数作为参数的单参数函数。
+
+通过fs.readFile实现fs.readFilSync
+```
+// 正常版本的readFile（有callback参数版本）
+fs.readFile(fileName, callback)
+
+// Thunk版本的readFile（无callback参数版本）
+const Thunk = function (fileName) {
+  return function (callback) {
+    return fs.readFile(fileName, callback)
+  }
+}
+const readFileThunk = Thunk(fileName)
+readFileThunk(callback)
+```
+
+#### 18.4.3 thunkify源码
+```
+function thunkify(fn) {
+  return function() {
+    var args = new Array(arguments.length)
+    var ctx = this
+    for (var i = 0; i < args.length; ++i) {
+      args[i] = arguments[i]
+    }
+    return function (done) {
+      var called
+      args.push(function () {
+        // 只允许执行一次
+        if (called) return
+        called = true
+        done.apply(null, arguments)
+      })
+      try {
+        fn.apply(ctx, args)
+      } catch (err) {
+        done(err)
+      }
+    }
+  }
+}
+```
+
+### 18.5 Generator函数的流程管理
+要是Generator函数自动执行，本质是要控制执行权在Generator函数与异步操作之间来回交替。
+Generator函数可以通过yield表达式交出执行权，异步操作可以通过回调函数或promise的then方法将执行权交回Generator函数。
+
+* yield表达式后面跟着thunk函数，在外部移动Generator函数的指针，得到执行权后，等待异步操作执行结束后再次移动Generator函数的指针交还执行权。
+* yield表达式后面跟着thunk函数或promise对象，在外部移动Generator函数的指针，得到执行权后，在promsie对象的then方法中再次移动Generator函数的指针交还执行权。
+
+#### 18.5.1 基于thunk函数的自动流程管理
+```
+// 基于thunk函数实现一个Generator函数的执行器
+function run(fn) {
+  const gn = fn()
+
+  const next = function (data) {
+    const result = gn.next(data)
+    if (result.done) return
+    result.value(next)
+  }
+
+  next()
+}
+function* gn() {
+  const result1 = yield readFileThunk('file1.text')
+  console.log(result1)
+  const result2 = yield readFileThunk('file2.text')
+  console.log(result2)
+}
+run(gn)
+```
+
+#### 18.5.2 基于promise的自动流程管理
+```
+function run (fn) {
+  const gn = fn()
+
+  const next = function (data) {
+    const obj = gn.next(data)
+    if (obj.done) return
+    obj.value.then(result => {
+      next(result)
+    })
+  }
+
+  next()
+}
+function* gn() {
+
+}
+run(gn)
+```
+
+#### 18.5.3 基于co模块的自动流程管理
+```
+function co(gen) {
+  var ctx = this
+  var args = slice.call(arguments, 1)
+  // 返回一个Promise实例
+  return new Promise(function(resolve, reject) {
+    // 如果gen是一个函数，则返回一个新的gen函数的副本，
+    // 里面绑定了this的指向，即ctx
+    if (typeof gen === 'function') gen = gen.apply(ctx, args)
+    // 如果gen不存在或者gen.next不是一个函数，就说明gen已经调用完成,那么直接可以resolve(gen)，返回Promise
+    if (!gen || typeof gen.next !== 'function') return resolve(gen)
+    // 首次调用gen.next()函数，假如存在的话
+    onFulfilled()
+    function onFulfilled(res) {
+      var ret
+      try {
+        // 尝试着获取下一个yield后面代码执行后返回的值
+        ret = gen.next(res)
+      } catch (e) {
+        return reject(e)
+      }
+      // 处理结果
+      next(ret)
+    }
+    function onRejected(err) {
+      var ret
+      try {
+        // 尝试抛出错误
+        ret = gen.throw(err)
+      } catch (e) {
+        return reject(e)
+      }
+      // 处理结果
+      next(ret)
+    }
+    // 这个next()函数是最为关键的一部分，里面几乎包含了generator自动调用实现的核心
+    function next(ret) {
+      // 如果ret.done === true, 
+      // 证明generator函数已经执行完毕
+      // 即已经返回了值
+      if (ret.done) return resolve(ret.value)
+      // 把ret.value转换成Promise对象继续调用
+      var value = toPromise.call(ctx, ret.value)
+      // 如果存在，则把控制权交给onFulfilled和onRejected，实现递归调用
+      if (value && isPromise(value)) return value.then(onFulfilled, onRejected)
+      // 否则最后直接抛出错误
+      return onRejected(new TypeError('You may only yield a function, promise, generator, array, or object, '
+        + 'but the following object was passed: "' + String(ret.value) + '"'))
+    }
+  })
+}
+function toPromise(obj) {
+  if (!obj) return obj
+  if (isPromise(obj)) return obj
+  if (isGeneratorFunction(obj) || isGenerator(obj)) return co.call(this, obj)
+  if ('function' == typeof obj) return thunkToPromise.call(this, obj)
+  if (Array.isArray(obj)) return arrayToPromise.call(this, obj)
+  if (isObject(obj)) return objectToPromise.call(this, obj)
+  return obj
+}
+function objectToPromise(obj){
+  // 获取一个和传入的对象一样构造器的对象
+  var results = new obj.constructor()
+  // 获取对象的所有可以遍历的key
+  var keys = Object.keys(obj)
+  var promises = []
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i]
+    // 对于数组的每一个项都调用一次toPromise方法，变成Promise对象
+    var promise = toPromise.call(this, obj[key])
+    // 如果里面是Promise对象的话，则取出e里面resolved后的值
+    if (promise && isPromise(promise)) defer(promise, key)
+    else results[key] = obj[key]
+  }
+  // 并行，按顺序返回结果，返回一个数组
+  return Promise.all(promises).then(function () {
+    return results
+  })
+  // 根据key来获取Promise实例resolved后的结果，
+  // 从而push进结果数组results中
+  function defer(promise, key) {
+    // predefine the key in the result
+    results[key] = undefined
+    promises.push(promise.then(function (res) {
+      results[key] = res
+    }))
+  }
+}
+
+// 执行
+function* gn() {
+
+}
+co(gn)
+```
+
