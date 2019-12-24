@@ -3685,3 +3685,131 @@ Child.prototype.__proto__ === Object.prototype // true
 通过继承原生构函可以达到修改原生构函行为的效果。
 
 ### 21.5 类的mixin的实现
+
+## 22 module的语法
+ES6之前，js通过CommonJS（用于服务端）和AMD（用于浏览器）模块来实现模块化，这是一种运行时加载机制，也用于异步加载模块，但不适合静态加载模块。
+
+### 22.1 模块、类、定义了let const变量的块级作用域中都是严格模式
+* 严格模式的限制
+* 变量必须声明后再使用
+* 函数的参数不能有同名属性，否则报错
+* 不能使用with语句
+* 不能对只读属性赋值，否则报错
+* 不能使用前缀 0 表示八进制数，否则报错
+* 不能删除不可删除的属性，否则报错
+* 不能删除变量delete prop，会报错，只能删除属性delete global[prop]
+* eval不会在它的外层作用域引入变量
+* eval和arguments不能被重新赋值
+* arguments不会自动反映函数参数的变化
+* 不能使用arguments.callee
+* 不能使用arguments.caller
+* 禁止this指向全局对象
+* 不能使用fn.caller和fn.arguments获取函数调用的堆栈
+* 增加了保留字（比如protected、static和interface）
+
+### 22.2 export命令
+* 单独输入变量
+```
+export const a = 1
+```
+* 统一输出变量，且可以设置别名
+```
+const a = 1
+const b = 2
+export { a, b as c }
+```
+* 默认输出变量
+```
+const b = 1
+export default b 
+```
+
+export 输出的是一个地址，引用了该模块的模块会在使用到的时候来该模块加载该变量，这一过程是动态的。
+export语句只能用于顶层，不能用于块级作用域
+
+### 22.3 import命令
+* 引入普通变量，可以设置别名
+```
+import { a, b as c } from './a'
+```
+* 引入默认变量
+```
+import a from './a'
+import a, { b } from './a'
+```
+* 引入所有变量
+```
+import * as a from './a'
+```
+
+import 语句引入的变量是只读的，不允许赋值
+
+import语句具有声明提升的效果
+```
+a()
+import { a } from './a'
+```
+
+import语句只能用于顶层，不能用于块级作用域
+
+### 22.4 export 与 import 的复合写法
+用于转发变量，该变量不会导入一个引用到该模块，只会留下一个地址
+* 统一转发变量
+```
+export { a, b } from './a'
+export { a, b as c } from './a'
+```
+* 整体变量转发
+```
+export * from './a'
+```
+* 默认变量转发
+```
+// 默认变量转发
+export { default } from './a'
+// 普通变量改默认变量转发
+export { a as default } from './a'
+// 默认变量改普通变量转发
+export { default as a } from './a'
+```
+
+### 22.5 模块的继承
+所谓模块的继承就是定义一个模块a，将模块a导入模块b中，模块b对模块a的一些行为作出覆盖（多态）。
+```
+// a.js
+const add = (a, b) => a + b
+export default add
+
+// b.js
+import add from './a'
+add = (a, b, c) => a + b + c
+export default add
+```
+
+### 22.6 跨模块常量
+模块对外暴露变量可以理解为模块对外暴露了一个地址，引用该模块的模块根据该地址寻找该变量，不同的模块引用同一个模块的变量时，访问的是同一个值。
+```
+class a {
+
+}
+export default a
+// 对外暴露的变量a可以视作一个单例模式，其他模块访问该模块的a都是访问同一个a
+```
+
+### 22.7 import()
+import只能用于顶层，失去了CommonJS异步加载模块的优势，故引入import()。
+```
+import('地址').then(data => console.log(data))
+```
+import()返回的是一个promise对象，promise对象的终值为该模块对外暴露的对象
+
+与CommonJS不同的是CommonJS的require是同步加载的，而import()是异步加载的
+
+```
+// 获得模块导出的对象
+// 统一导出的
+then({ a } => console.log(a))
+// 默认导出的
+then(a => console.log(a.default))
+then({ default: a } => console.log(a))
+```
