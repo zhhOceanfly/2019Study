@@ -3567,3 +3567,121 @@ class Rectangle extends Shape {
 var x = new Shape()  // 报错
 var y = new Rectangle(3, 4)  // 正确
 ```
+## 21 class的继承
+子类必须在constructor方法中调用super方法，否则新建实例时会报错。这是因为子类自己的this对象，必须先通过父类的构造函数完成塑造，得到与父类同样的实例属性和方法，然后再对其进行加工，加上子类自己的实例属性和方法。如果不调用super方法，子类就得不到this对象。这一点与ES5不同。
+
+ES5 的继承，实质是先创造子类的实例对象this，然后再将父类的方法添加到this上面（Parent.apply(this)）。ES6 的继承机制完全不同，实质是先将父类实例对象的属性和方法，加到this上面（所以必须先调用super方法），然后再用子类的构造函数修改this。
+// 看看class是如何实现的
+
+class中若没定义constructor，则有默认的constructor函数
+```
+constructor (...arg) {
+  super(...arg)
+}
+```
+
+### 21.1 Object.getPrototypeOf()
+```
+Object.getPrototypeOf(Child) === Parent // true
+
+// Object.getPrototypeOf() 等价于
+function getPrototypeOf (Child) {
+  return Child.__proto__
+}
+```
+Object.getPrototypeOf()可以返回一个类的父类，这可以用于判断一个类是否继承至另一个类
+// 这是因为extends实现的继承，类__proto__属性指向父类 ，类的原型对象prototype的__proto__属性指向父类的__proto__属性，这里与ES5并不相同
+
+### 21.2 super关键字
+super级可作为函数直接调用，也可以作为一个对象使用
+
+* 作为函数使用时，代表父类的构造函数，super中的this指向子类的实例，super()等价于Parent.prototype.constructor.call(this)，super()只能在子类的构函中使用。
+* 作为对象使用时，在原型方法中指向父类的原型对象，在静态方法中指向父类本身。
+```
+// 在子类的原型方法中只能调用父类原型方法，此时fn内的this指向子类的实例
+super.fn()
+// 等价于
+Parent.prototype.fn.call(this)
+
+// 在子类的原型方法中调用父类的原型属性
+super.x
+// 等价于
+this.x
+
+// 在子类的静态方法中只能调用父类的静态方法，此时fn内的this指向子类本身
+super.fn()
+// 等价于
+Parent.fn.call(Child)
+
+// 在子类的静态方法中调用父类的静态属性
+super.x
+// 等价于
+this.x
+```
+
+### 21.3 prototype属性与__proto__属性
+js中的对象分为函数对象与普通对象，Function、Object、Function的一切子类都属于函数对象，其他对象为普通对象。
+函数对象同时具有prototype属性与__proto__属性，普通对象只具有__proto__属性。
+
+对于函数对象，__proto__总是指向父类的，prototype属性指向该函数对象的原型对象的，prototype属性的__proto__属性则指向父类的原型对象（Parent.prototype），原理是寄生组合继承。
+Child.__proto__ = Parent
+Child.prototype.__proto__ = Parent.prototype
+
+对于普通对象，__proto__属性指向原型对象
+Child实例.__proto__ = Child.prototype
+
+综上可德
+Child实例.__proto__.__proto__ = Parent.prototype
+
+继承的实现原理：
+```
+// 子类的__proto__属性指向父类，子类的原型对象的__proto__属性指向父类的原型对象
+Object.setPrototypeOf(Child.prototype, Parent.prototype)
+Object.setPrototypeOf(Child, Parent)
+```
+
+Object.setPrototypeOf实现原理
+```
+function setPrototypeOf (Child, Parent) {
+  Child.__proto__ = Parent
+  return Child
+}
+```
+
+Object.create实现原理
+```
+function create(Parent) {
+  function F() {}
+  F.prototype = Parent.prototype
+  reutrn new F()
+}
+```
+
+#### 21.3.1 特殊情况 函数对象生成的实例也是函数对象
+一般函数对象生成的实例都是普通对象，__proto__属性指向构函的原型对象。
+而Function的实例也是函数对象，__proto__属性指向Function的原型对象，prototype则指向
+没有显示继承的类（可以看做Function的实例）
+```
+class Child {
+}
+Child.__proto__ === Function.prototype // true
+Child.prototype.__proto__ === Object.prototype // true
+```
+
+搞清楚Child继承至Parent，Child不继承任何类，这两种情况下所有的prototype与__proto__的指向！！！画图！！！
+
+### 21.4 原生构函的继承
+原生构函：
+* Boolean()
+* Number()
+* String()
+* Array()
+* Date()
+* Function()
+* RegExp()
+* Error()
+* Object()
+
+通过继承原生构函可以达到修改原生构函行为的效果。
+
+### 21.5 类的mixin的实现
