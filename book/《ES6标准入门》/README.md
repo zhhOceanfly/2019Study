@@ -3752,6 +3752,12 @@ import { a } from './a'
 
 import语句只能用于顶层，不能用于块级作用域
 
+多次import同一变量只会执行一次
+```
+import { a } from './'
+import { a } from './'  // 不执行
+```
+
 ### 22.4 export 与 import 的复合写法
 用于转发变量，该变量不会导入一个引用到该模块，只会留下一个地址
 * 统一转发变量
@@ -3813,3 +3819,93 @@ then({ a } => console.log(a))
 then(a => console.log(a.default))
 then({ default: a } => console.log(a))
 ```
+## 23 module加载的实现
+### 23.1 浏览器的加载
+```
+// 同步加载的js文件，主线程停止，等待下载完成后立即执行该js文件
+<script type="application/javascript">
+  // module code
+</script>
+
+// 异步加载的js文件，主线程不停止，等待主线程跑完后执行该js文件
+<script type="application/javascript" defer>
+  // module code
+</script>
+
+// 异步加载的js文件，主线程不停止，等待下载完成后立即执行该js文件
+<script type="application/javascript" async>
+  // module code
+</script>
+
+// 异步加载，等待主线程跑完后执行该js模块
+<script type="module">
+  // module code
+</script>
+
+// 异步加载，等待下载完成后立即执行该js模块
+<script type="module" async>
+  // module code
+</script>
+```
+
+在js模块中默认采用严格模式，且可以使用import export语句，且代码是在模块中运行的，不是在全局运行。
+
+### 23.2 ES6 模块与 CommonJS 模块的差异
+* CommonJS 模块输出的是一个值的拷贝，ES6 模块输出的是值的引用。CommonJS输出变量时，值就固定了，export输出变量时，输出的是引用，值依然会变化。
+* CommonJS 模块是运行时加载，ES6 模块是编译时输出接口。
+
+### 23.3 Node.js加载
+这一部分涉及到package.json文件，且主要讲的是配置，暂时不看。
+
+### 23.4 循环加载
+a脚本的执行依赖b脚本，而b脚本的执行又依赖a脚本。
+
+#### 23.4.1 CommonJS模块加载原理
+require命令第一次加载该脚本，就会执行整个脚本，然后在内存生成一个对象。
+```
+{
+  id: '...', // 模块名
+  exports: { ... }, // 对外暴露的变量
+  loaded: true, // 是否加载完成
+  ...
+}
+```
+之后再次加载该模块时，不会再重新执行该模块脚本代码。
+
+#### 23.4.2 CommonJS模块的循环加载
+一旦出现两个模块循环加载时，CommonJS采用的是只输出已执行部分，未执行部分不输出。
+```
+// a.js
+exports.done = false
+var b = require('./b.js')
+console.log('在 a.js 之中，b.done = %j', b.done)
+exports.done = true
+console.log('a.js 执行完毕')
+
+// b.js
+exports.done = false
+var a = require('./a.js')
+console.log('在 b.js 之中，a.done = %j', a.done)
+exports.done = true
+console.log('b.js 执行完毕')
+```
+// 先执行a.js，在遇到require时，会先去执行reuire的模块，即b.js
+
+#### 23.4.3 ES6模块的循环加载
+import从一个模块加载变量时，是生成一个指针，指向被加载模块，值是动态的
+```
+// a.mjs
+import {bar} from './b'
+console.log('a.mjs')
+console.log(bar)
+export let foo = 'foo'
+
+// b.mjs
+import {foo} from './a'
+console.log('b.mjs')
+console.log(foo)
+export let bar = 'bar'
+```
+// 先执行a.mjs，在遇到import语句后会优先执行import的模块，即b.js，在b.js中遇到import a.js时，不会回去执行a.js，因为a.js对外的接口已经存在了
+
+import语句具有声明提升的效果，同时存在import语句与function语句时，function语句先进行声明提升，再轮到import
