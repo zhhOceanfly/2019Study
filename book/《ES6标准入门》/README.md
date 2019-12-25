@@ -4075,3 +4075,9 @@ async function* ge2() {
   }
 }
 ```
+
+## 26 Array Buffer
+学习webGL后再回来看
+
+## 27 装饰器
+等待标准出来后重新看
