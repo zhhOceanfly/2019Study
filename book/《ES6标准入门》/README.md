@@ -3909,3 +3909,38 @@ export let bar = 'bar'
 // 先执行a.mjs，在遇到import语句后会优先执行import的模块，即b.js，在b.js中遇到import a.js时，不会回去执行a.js，因为a.js对外的接口已经存在了
 
 import语句具有声明提升的效果，同时存在import语句与function语句时，function语句先进行声明提升，再轮到import
+
+## 24 编程风格
+* let与const之间优先使用const：编译器会对const语句进行优化
+* 字符串使用单引号或反引号
+* 声明单行对象时，最后一个属性不加逗号，多行对象时，最后一个属性加逗号
+```
+const obj1 = { a, b }
+const obj2 = {
+  a,
+  b,
+}
+```
+* 立即执行的函数可以写成箭头函数的形式（在顶层中执行的函数this指向undefined，写成箭头函数并不会产生影响）
+```
+(() => {
+  console.log('init')
+})()
+```
+* 箭头函数取代Function.prototype.bind（这里保留意见，有些时候bind看起来更加简洁）
+```
+// 固定this的两种方法，这里也可以看出箭头函数中this的指向与其定义时this的指向有关
+const obj ={
+  name: 'lilei',
+  hello() {
+    return `hello ${this.name}!`
+  },
+  init(obj) {
+    // bing形式
+    return this.hello.bind(obj)
+    // 箭头函数形式
+    return (...arg) => this.hello.apply(obj, arg)
+  }
+}
+const hello = obj.init({name: 'xiaohong'})
+```
