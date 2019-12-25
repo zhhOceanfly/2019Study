@@ -3944,3 +3944,134 @@ const obj ={
 }
 const hello = obj.init({name: 'xiaohong'})
 ```
+
+## 25 异步遍历器
+### 25.1 同步遍历器实现异步操作
+遍历器若想实现一些异步的行为，可以在next方法中返回promise对象，在then方法中获取终值
+```
+const obj = {
+  [Symbol.iterator] () {
+    let num = 0
+    return {
+      next() {
+        num++
+        return {
+          value: new Promise(resolve => {
+            setTimeout(() => {
+              resolve(num)
+            }, 1000)
+          }),
+          done:num === 5,
+        }
+      }
+    }
+  }
+}
+
+const iterator = obj[Symbol.iterator]()
+const data = iterator.next()
+!data.done && data.value.then(num => {
+  console.log(num)
+})
+```
+要想实现异步遍历，next方法返回的对象的value属性可以是一个thunk函数，也可以是一个promise对象。
+但是这种方式不太理想，他与同步的遍历器操作不太一样，ES2018中引入了异步遍历器，使用时与同步遍历器的写法几乎相同
+
+### 25.2 异步遍历器接口
+```
+const asyncIterator = [1, 2, 3][Symbol.asyncIterator]()
+asyncIterator.next()  // 这里返回的是一个promise对象，想要提取遍历的值需要在then方法中得到
+  .then(data => {
+    console.log(data) // { value: 1, done: false }
+    return asyncIterator.next()
+  })
+  .then(data => {
+    console.log(data) // { value: 2, done: false }
+    asyncIterator.next()
+  })
+  .then(data => {
+    console.log(data) // { value: 3, done: false }
+    asyncIterator.next()
+  })
+  .then(data => {
+    console.log(data) // { value: undefined, done: true }
+  })
+
+// 或者使用async函数
+async function f() {
+  const asyncIterator = [1, 2, 3][Symbol.asyncIterator]()
+  console.log(await asyncIterator.next())
+  // { value: 1, done: false }
+  console.log(await asyncIterator.next())
+  // { value: 2, done: false }
+}
+```
+### 25.3 for await ...of
+对异步遍历器返回的promise await等待获得终值后将值传入for中，注意await语句还不能在顶层中使用，只能在async函数中使用！！
+```
+// 这里面是依次执行的，不是并行执行的
+(async () => {
+  for await (let item of [1, 2, 3][Symbol.asyncIterator]()) {
+    console.log(item)
+  }
+})()
+```
+for await ...of也可以用于同步遍历。
+
+### 25.4 异步生成器
+异步Generator函数返回一个异步遍历器对象
+```
+async function* gen() {
+  await new Promise(resovel => {
+    setTimeout(() => {
+      resolve()
+    }, 1000)
+  })
+  yield 'hello'
+}
+const asyncIterator = gen()
+asyncIterator.next().then(x => console.log(x))  // 1s后得到 { value: 'hello', done: false }
+```
+// yield 返回的是一个promise对象，
+
+### 25.5 异步生成器的执行器
+生成器常用的执行器有co模块，完成一个异步生成器的执行器
+```
+
+```
+### 25.6 yield*
+yield* 后面可以接一个遍历器对象，也可以接一个异步遍历器对象
+// yield* 接遍历器对象
+```
+function* ge1() {
+  yield 1
+  yield 2
+}
+
+function* ge2() {
+  yield* ge1()
+}
+// 等价于
+function* ge2() {
+  for(let item of ge1()) {
+    yield item
+  }
+}
+```
+// yield* 接异步遍历器对象
+```
+async function* ge1() {
+  yield await sleep(1000)
+  yield await sleep(1000)
+}
+
+async function* ge2() {
+  yield* ge1()
+}
+// 等价于
+async function* ge2() {
+  for await(let item of ge1()) {
+    yield item
+  }
+}
+```
