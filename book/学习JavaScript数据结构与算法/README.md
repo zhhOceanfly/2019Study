@@ -792,3 +792,138 @@ class MySet {
 ```
 [...set1].every(item => set2.has(item ))
 ```
+
+## 6 字典
+字典也称作映射、符号表或关联数组。是一种一对一的关系，js中的对象就是字典结构。
+
+### 6.1 实现
+```
+class ValuePair {
+  constructor(key, value) {
+    this.key = key
+    this.value = value
+  }
+
+  toString () {
+    return `[#${this.key}:${this.value}]`
+  }
+}
+
+class Dictionary {
+  constructor () {
+    this._init()
+  }
+
+  _init () {
+    this._table = {}
+    this.count = 0
+  }
+
+  keyToString (key) {
+    if (key === null) {
+      return 'null'
+    } else if (key === undefined) {
+      return 'undefined'
+    } else {
+      return key.toString()
+    }
+  }
+
+  set (key, value) {
+    if (key == null) return false
+    if (!this.hasKey(key)) this.count++
+    this._table[this.keyToString(key)] = new ValuePair(key, value)
+    return true
+  }
+
+  remove (key) {
+    if (this.hasKey(key)) {
+      this.count--
+      return Reflect.deleteProperty(this._table, this.keyToString(key))
+    }
+    return false
+  }
+
+  hasKey (key) {
+    return Reflect.has(this._table, this.keyToString(key))
+  }
+
+  get (key) {
+    // 第一种实现方法
+    // if (!this.hasKey(this.keyToString(key))) return undefined
+    // return this._table[this.keyToString(key)].value
+    // 第二种实现方法
+    const valuePair = this._table[this.keyToString(key)]
+    return valuePair == null ? undefiend : valuePair.value
+  }
+
+  clear () {
+    this._init()
+  }
+
+  size () {
+    return this.count
+  }
+
+  isEmpty () {
+    return this.count === 0
+  }
+
+  keys () {
+    let keys = []
+    for (let item in this._table) {
+      keys.push(this._table[item].key)
+    }
+    return keys
+  }
+
+  values () {
+    let values = []
+    for (let item in this._table) {
+      values.push(this._table[item].value)
+    }
+    return values
+  }
+
+  entries () {
+    let entries = []
+    for (let item in this._table) {
+      const valuePair = this._table[item]
+      entries.push([valuePair.key, valuePair.value])
+    }
+    return entries
+  }
+
+  keyValues () {
+    return this.entries()
+  }
+
+  forEach (callback, ...arg) {
+    if (typeof callback !== 'function') throw new TypeError('callback is not a function')
+    if (arg.length !== 0 && typeof arg[0] === 'object') {
+      callback = callback.bind(arg[0])
+    }
+    const entries = this.entries()
+    for (let item in this._table) {
+      const valuePair = this._table[item]
+      const flag = callback(valuePair.key, valuePair.value, entries)
+      if (flag === false) break
+    }
+  }
+
+  toString () {
+    if (this.isEmpty()) return ''
+    let strObj = ''
+    for (let item in this._table) {
+      strObj += `${this._table[item].toString()},`
+    }
+    strObj = strObj.substr(0, strObj.length - 1)
+    return strObj
+  }
+}
+```
+
+### 6.2 小tips
+字典的get方法中有两种方法实现，第一种方法先判断key是否存在再取出，第二种直接取出，根据取出的值是否为null来决定返回值。
+
+第一种方式需要两次访问存储字典数据的对象，开销更大。一般采用第二种方式，这在node中也很常见，如读取文件时，官网推荐做法是直接读取文件并try，文件不存在时在catch中处理，而不是先判断文件是否存在再进行读取。
