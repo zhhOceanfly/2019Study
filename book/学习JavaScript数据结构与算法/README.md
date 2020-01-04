@@ -727,3 +727,68 @@ class SortedLikedList extends LikedList {
   }
 }
 ```
+
+## 5 集合
+集合是一组无序且唯一的元素组成的(常用于去重)
+
+
+### 5.1 实现
+```
+class MySet {
+  constructor () {
+    this._init()
+  }
+
+  _init () {
+    this._item = {}
+    this.count = 0
+  }
+
+  has (element) {
+    return Reflect.has(this._item, element)
+  }
+
+  add (element) {
+    if (this.has(element)) return false
+    this._item[element] = element
+    this.count++
+    return true
+  }
+
+  delete (element) {
+    if (!this.has(element)) return false
+    this.count--
+    return Reflect.deleteProperty(this._item, element)
+  }
+
+  clear () {
+    this._init()
+  }
+
+  size () {
+    return this.count
+  }
+
+  values () {
+    return Object.values(this._item)
+  }
+}
+```
+
+### 5.2 集合操作
+1. 交集
+```
+[...set1, ...set2]
+```
+2. 并集
+```
+[...set1].filter(item => set2.has(item))
+```
+3. 差集
+```
+[...set1].filter(item => !set2.has(item))
+```
+4. 子集
+```
+[...set1].every(item => set2.has(item ))
+```
