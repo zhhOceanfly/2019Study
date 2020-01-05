@@ -794,7 +794,7 @@ class MySet {
 ```
 
 ## 6 字典
-字典也称作映射、符号表或关联数组。是一种一对一的关系，js中的对象就是字典结构。
+字典也称作映射、符号表或关联数组。是一种一对一的关系，js中的map就是字典结构。
 
 ### 6.1 实现
 ```
@@ -927,3 +927,196 @@ class Dictionary {
 字典的get方法中有两种方法实现，第一种方法先判断key是否存在再取出，第二种直接取出，根据取出的值是否为null来决定返回值。
 
 第一种方式需要两次访问存储字典数据的对象，开销更大。一般采用第二种方式，这在node中也很常见，如读取文件时，官网推荐做法是直接读取文件并try，文件不存在时在catch中处理，而不是先判断文件是否存在再进行读取。
+
+## 7 散列表(HashTable或HashMap)
+散列表又叫哈希表是一种特殊的字典，散列表的键是数值类型，查找数据时时间复杂度可达O(1)。
+字典中的key不能或者不适合作为数据存储的下标，可以考虑通过一个变化（计算）把它们映射到一种下标，也就是通过散列函数实现散列表。
+
+散列表实现思想
+1. 选定一个整数的下标范围（如0-N）的顺序表
+2. 选定一个从实际关键码集合到上述下标范围的适当映射h(h就是散列函数)
+  1. 存入关键码数据为key的数据时，将其存入表中第h(key)个位置
+  2. 遇到以key为关键码的检索时，直接去找表中第h(key)个位置的元素
+
+
+### 7.1 lose lose散列函数
+lose lose散列函数是最常见的散列函数，该函数计算方式为：若key为数值类型，则直接返回，否则将key转换为字符串，遍历key的每个字符，转换为ASCII码值并相加。
+```
+loseloseHashCode (key) {
+  if (typeof key === 'nummber') {
+    return key
+  }
+  const tableKey = this.keyToString(key)
+  let hashCode = 0
+  for (let item of tableKey) {
+    hashCode += item.charCodeAt()
+  }
+  return hashCode % 37
+}
+```
+
+### 7.2 散列表的实现
+```
+class ValuePair {
+  constructor(key, value) {
+    this.key = key
+    this.value = value
+  }
+  toString () {
+    return `[#${this.key}:${this.value}]`
+  }
+}
+
+class HashMap {
+  constructor () {
+    this._init()
+  }
+  _init () {
+    this._table = {}
+    this.count = 0
+  }
+  keyToString (key) {
+    if (key === null) {
+      return 'NULL'
+    } else if (key === undefined) {
+      return 'UNDEFINED'
+    } else {
+      return key.toString()
+    }
+  }
+  loseloseHashCode (key) {
+    if (typeof key === 'nummber') {
+      return key
+    }
+    const tableKey = this.keyToString(key)
+    let hashCode = 0
+    for (let item of tableKey) {
+      hashCode += item.charCodeAt()
+    }
+    return hashCode % 37
+  }
+  getHashCode (key) {
+    return this.loseloseHashCode(key)
+  }
+  put (key, value) {
+    if (key == null) return false
+    const hashCode = this.getHashCode(key)
+    this._table[hashCode] = new ValuePair(key, value)
+    this.count++
+    return true
+  }
+  remove (key) {
+    const hashCode = this.getHashCode(key)
+    const valuePair = this._table[hashCode]
+    if (valuePair == null) return false
+    Reflect.deleteProperty(this._table, hashCode)
+    this.count--
+    return valuePair.value
+  }
+  hasKey (key) {
+    const hashCode = this.getHashCode(key)
+    return Reflect.has(this._table, hashCode)
+  }
+  clear () {
+    this._init()
+  }
+  get (key) {
+    const hashCode = this.getHashCode(key)
+    const valuePiar = this._table[hashCode]
+    return valuePiar == null ? undefined : valuePiar.value
+  }
+  isEmpty () {
+    return this.count === 0
+  }
+  size () {
+    return this.count
+  }
+  toString () {
+    if (this.isEmpty()) return ''
+    let strObj = ''
+    for (let item in this._table) {
+      strObj += `${this._table[item].toString()},`
+    }
+    strObj = strObj.substr(0, strObj.length - 1)
+    return strObj
+  }
+}
+```
+
+### 7.3 散列集合
+为提高集合的取值速度到O(1)，也可以使用散列函数实现散列集合
+
+### 7.4 处理散列表中的冲突
+不同的key可能对应同一个hashCode，在执行插入时，后一个key会覆盖前一个key的值，这就是冲突
+
+#### 7.4.1 分离链接解决冲突
+hashCode的值原来存储的是valuePair对象，现在存入一个链表，将valuePair作为链表的元素，同一个hashCode存入同一个链表中。
+
+```
+const { LikedList } = require('./likedList2')
+
+class HashTableSeparateChaining extends HashMap{
+  constructor () {
+    super()
+  }
+  put (key, value) {
+    if (key == null) return false
+    const hashCode = this.getHashCode(key)
+    if (this._table[hashCode] == null) this._table[hashCode] = new LikedList()
+    this._table[hashCode].push(new ValuePair(key, value))
+    this.count++
+    return true
+  }
+  remove (key) {
+    const hashCode = this.getHashCode(key)
+    const likedList = this._table[hashCode]
+    if (likedList == null || likedList.isEmpty()) return false
+    let current = likedList.getHead()
+    for (let i = 0; i < likedList.size(); i++) {
+      if (current.element.key === key) {
+        likedList.removeAt(i)
+        if (likedList.isEmpty()) Reflect.deleteProperty(this._table, hashCode)
+        break
+      }
+      current = current.next
+    }
+    this.count--
+    return current.element.value
+  }
+  get (key) {
+    const hashCode = this.getHashCode(key)
+    const likedList = this._table[hashCode]
+    if (likedList == null || likedList.isEmpty()) return undefined
+    let current = likedList.getHead()
+    for (let i = 0; i < likedList.size(); i++) {
+      if (current.element.key === key) {
+        break;
+      }
+      current = current.next
+    }
+    return current == null ? undefined : current.element.value
+  }
+}
+```
+
+#### 7.4.2 线性探查法解决冲突
+
+#### 7.4.3 更好的散列函数
+评估一个散列函数是否是一个好的散列函数:
+* 插入和检索元素的时间（即性能）
+* 较低的冲突可能性
+
+loselose散列函数会照成较多的冲突
+
+较受推崇的散列函数：djb2
+```
+djb2HashCode(key) {
+  const tableKey = this.keyToString(key)
+  let hash = 5381; // 质数，常用5381
+  for (let i = 0; i < tableKey.length; i++) {
+    // 33是幻数，即常用的数
+    hash = (hash * 33) + tableKey.charCodeAt(i)
+  }
+  return hash % 1013 // 随机质数，这个值应该比我们预期的哈希表的大小要大
+}
+```
