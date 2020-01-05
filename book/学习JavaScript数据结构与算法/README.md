@@ -1120,3 +1120,34 @@ djb2HashCode(key) {
   return hash % 1013 // 随机质数，这个值应该比我们预期的哈希表的大小要大
 }
 ```
+
+## 8 递归
+学习看懂浏览器的函数调用栈
+
+使用递归函数的时候尽量写成尾调用递归的形式
+
+### 8.1 计算一个数的阶乘
+```
+function factorial (num) {
+  if (num < 0) {
+    return undefined
+  } else if (num === 1 || num === 0) {
+    return 1
+  } else {
+    return num * factorial(num - 1)
+  }
+}
+```
+
+### 8.2 计算斐波那契数列第n个数的值
+```
+function fibonacci (num) {
+  if (num <= 0) {
+    return 0
+  } else if (num <= 2) {
+    return 1
+  } else {
+    return fibonacci(num - 1) + fibonacci(num - 2)
+  }
+}
+```
