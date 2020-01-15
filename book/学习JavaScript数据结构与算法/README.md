@@ -1151,3 +1151,389 @@ function fibonacci (num) {
   }
 }
 ```
+
+## 9 树
+一个树结构包含一系列存在父子关系的节点。每个节点都有一个父节点（除了顶部的第一个节点）以及零个或多个子节点。
+
+### 9.1 术语
+* 键: 树中的节点称为键。
+* 节点: 树中的每个元素都叫作节点。
+* 根节点: 位于树顶部的节点。
+* 内部节点与外部节点: 节点分为内部节点和外部节点，至少有一个子节点的节点称为内部节点。没有子节点的节点称为外部节点或叶节点。
+* 子树: 子树由节点和它的后代构成。
+* 节点的深度: 节点的深度取决于它的祖先节点的数量(这个深度看做高度更好理解)。
+* 树的高度: 树的高度取决于所有节点深度的最大值。
+* 层级: 根节点在第0层，它的子节点在第1层，以此类推。
+* 二叉树: 二叉树中的节点最多只能有两个子节点，一个是左侧子节点，另一个是右侧子节点。
+* 二叉搜索树（BST）: 二叉搜索树（BST）是二叉树的一种，但是只允许你在左侧节点存储（比父节点）小的值，在右侧节点存储（比父节点）大的值。
+
+### 9.2 二叉搜索树
+特性: 二叉搜索树要求左子节点必须比节点的值小，右子节点必须比节点的值大。
+二叉树的查找最大次数为该二叉树的高度
+缺点: 由于二叉树的特性，导致某一棵子树的高度可能很高，这时查询速度会变慢。
+```
+// 二叉搜索树
+const compare = {
+  LESS_THEN: -1,
+  BIGGER_THEN: 1
+}
+class Node {
+  constructor (key) {
+    this.key = key
+    this.left = null
+    this.right = null   
+  }
+}
+class BinerySearchTree {
+  constructor () {
+    this.root = null
+  }
+  compareFn (left, right) {
+    return left < right ? compare.LESS_THEN : (left > right ? compare.BIGGER_THEN : 0)
+  }
+  insert (key) {
+    if (this.root == null) {
+      this.root = new Node(key)
+    } else {
+      this.insertNode(this.root, key)
+    }
+  }
+  insertNode (node, key) {
+    if (this.compareFn(key, node.key) === compare.LESS_THEN) {
+      if (node.left == null) {
+        node.left = new Node(key)
+      } else {
+        this.insertNode(node.left, key)
+      }
+    } else {
+      if (node.right == null) {
+        node.right = new Node(key)
+      } else {
+        this.insertNode(node.right, key)
+      }
+    }
+  }
+  search (key) {
+    return this.searchNode(this.root, key)
+  }
+  searchNode (node, key) {
+    if (node == null) return false
+    if (this.compareFn(key, node.key) === compare.LESS_THEN) {
+      return this.searchNode(node.left, key)
+    } else if (this.compareFn(key, node.key) === compare.BIGGER_THEN) {
+      return this.searchNode(node.right, key)
+    } else {
+      return true
+    }
+  }
+  inOrderTraverse (cb) {
+    this.inOrderTraverseNode(this.root, cb)
+  }
+  inOrderTraverseNode (node, cb) {
+    if (node == null) return
+    this.inOrderTraverseNode(node.left, cb)
+    cb(node.key)
+    this.inOrderTraverseNode(node.right, cb)
+  }
+  preOrderTraverse (cb) {
+    this.preOrderTraverseNode(this.root, cb)
+  }
+  preOrderTraverseNode (node, cb) {
+    if (node == null) return
+    cb(node.key)
+    this.preOrderTraverseNode(node.left, cb)
+    this.preOrderTraverseNode(node.right, cb)
+  }
+  postOrderTraverse (cb) {
+    this.postOrderTraverse(this.root, cb)
+  }
+  postOrderTraverseNode (node, cb) {
+    if (node == null) return
+    this.postOrderTraverseNode(node.left, cb)
+    this.postOrderTraverseNode(node.right, cb)
+    cb(node.key)
+  }
+  min () {
+    if (this.root == null) return undefined
+    let current = this.root
+    while (current.left) {
+      current = current.left
+    }
+    return current.key
+  }
+  max () {
+    if (this.root == null) return undefined
+    let current = this.root
+    while (current.right) {
+      current = current.right
+    }
+    return current.key
+  }
+  remove (key) {
+    this.root = this.removeNode(this.root, key)
+  }
+  // 注意这里返回的是删掉的节点(或者说是传入的节点)
+  removeNode (node, key) {
+    if (node == null) return undefined
+    if (this.compareFn(key, node.key) === compare.LESS_THEN) {
+     node.left = this.removeNode(node.left, node)
+     return node
+    } else if (this.compareFn(key, node.key) === compare.BIGGER_THEN) {
+      node.right = this.removeNode(key, node.right)
+      return node
+    } else {
+      if (node.left == null && node.right == null) {
+        node = null
+        return node
+      } else if (node.left == null) {
+        node = node.right
+        return node
+      } else if (node.right == null) {
+        node = node.left
+        return node
+      } else {
+        let current = node.right
+        while (current.left) {
+          current = current.left
+        }
+        node.key = current.key
+        node.right = this.removeNode(node.right, current.key)
+        return node
+      }
+    }
+  }
+}
+```
+
+### 9.3 AVL自平衡树
+AVL树是一棵自平衡树，属于二叉搜索树，目的是解决二叉搜索树时间复杂度可能变为O(n)的情况(不停的在一棵子树上插入数据)
+概念:
+* 节点的高度: 节点到任意子节点变的最大值
+* 平衡因子: 右子树与左子树的高度的差，平衡因子不为-1、0、1时，该树需要平衡
+
+特点:
+* 查询速度非常快，时间复杂度为O(log2 N)
+* 插入删除速度很慢，每一次插入或删除都会导致整颗树发生改变
+
+```
+const BalanceFactor = {
+  UNBALANCED_LEFT: Symbol('unbalanced_left'),
+  LIGHTLY_UNBALANCED_LEFT: Symbol('lightly_unbalanced_left'),
+  BALANCED: Symbol('balanced'),
+  LIGHTLY_UNBALANCED_RIGHT: Symbol('lightly_unbalanced_right'),
+  UNBALANCED_RIGHT: Symbol('unbalanced_right'),
+}
+class AVLTree extends BinarySearchTree {
+  constructor () {
+    super()
+  }
+  getNodeHeight (node) {
+    if (node == null) return -1
+    return Math.max(this.getNodeHeight(node.left), this.getNodeHeight(node.right)) + 1
+  }
+  getBalanceFactor (node) {
+    const heightDifference = this.getNodeHeight(node.right) - this.getNodeHeight(node.left)
+    const configure = [
+      [-2, BalanceFactor.UNBALANCED_RIGHT],
+      [-1, BalanceFactor.LIGHT_UNBALANCED_RIGHT],
+      [1, BalanceFactor.LIGHTLY_UNBALANCED_LEFT],
+      [2, BalanceFactor.UNBALANCED_LEFT], 
+    ]
+    const map = new Map(configure)
+    const balanceFactor = map.get(heightDifference)
+    return balanceFactor ? balanceFactor : BalanceFactor.BALANCED
+  }
+  rotationLeft (node) {
+    const temp = node.right
+    node.right = temp.left
+    temp.left = node
+    return temp
+  }
+  rotationRight (node) {
+    const temp = node.left
+    node.left = temp.right
+    temp.right = node
+    return temp
+  }
+  rotationLeftRight (node) {
+    node.right = this.rotationLeft(node.right)
+    return this.rotationRight(node)
+  }
+  rotationRightLeft (node) {
+    node.left = this.rotationRight(node.left)
+    return this.rotationLeft(node)
+  }
+  balance (node) {
+    if (node == null) return null
+    const balanceFactor = this.getBalanceFactor(node)
+    if (balanceFactor === BalanceFactor.UNBALANCED_LEFT) {
+      if (this.getNodeHeight(node.left) > this.getNodeHeight(node.right)) {
+        node = this.rotationLeftRight(node)
+      } else {
+        node = this.rotationLeft(node)
+      }
+    } else if (balanceFactor === BalanceFactor.UNBALANCED_RIGHT) {
+      if (this.getNodeHeight(node.right) > this.getNodeHeight(node.left)) {
+        node = this.rotationRightLeft(node)
+      } else {
+        node = this.rotationRight(node)
+      }
+    }
+    return node
+  }
+  insert (key) {
+    this.root = this.insertNode(this.root, key)
+  }
+  insertNode (node, key) {
+    if (node == null) return new Node(key)
+    if (this.compareFn(key, node.key) === Compare.LESS_THEN) {
+      node.left = this.insertNode(node.left, key)
+    } else {
+      node.right = this.insertNode(node.right, key)
+    }
+    return this.balance(node)
+  }
+  removeNode (node, key) {
+    node = super.removeNode(node, key)
+    return this.balance(node)
+  }
+}
+```
+
+### 9.4 红黑树
+参考文章: https://www.jianshu.com/p/e136ec79235c
+红黑树也是一棵自平衡树，属于二叉搜索树。
+
+概念：
+* 节点不是红的就是黑的，根节点是黑的，叶子节点是黑的(为null的节点)
+* 相邻的两个节点不可同为红色
+* 任意给定一个节点到他的任意后代节点(null节点)的路径中包含相同的黑色节点
+  * 推断出：如果一个结点存在黑子结点，那么该结点肯定有两个子结点
+
+操作：
+* 左旋：以某个结点作为支点(旋转结点)，其右子结点变为旋转结点的父结点，右子结点的左子结点变为旋转结点的右子结点，左子结点保持不变。
+* 右旋：以某个结点作为支点(旋转结点)，其左子结点变为旋转结点的父结点，左子结点的右子结点变为旋转结点的左子结点，右子结点保持不变。
+* 变色：结点的颜色由红变黑或由黑变红。
+
+特点:
+* 红黑树的插入与删除效率比AVL自平衡树要高。AVL树需要更新整颗树使得每个节点的平衡因子小于等于1，而红黑树只更新局部
+* 红黑树的平衡因子可能达到2，红黑树并不是一个完美平衡二叉查找树，故查找速度稍慢与AVL树。
+
+为什么插入的节点都是红色的？因为插入红色的节点并不会破坏红黑树的黑色平衡
+
+```
+const Colors = {
+  RED: Symbol('red'),
+  BLACK: Symbol('black')
+}
+class RedBlackNode extends Node{
+  constructor (key, color = Colors.RED) {
+    super(key)
+    this.color = color
+    this.parent = null
+  }
+  isRed () {
+    return this.color === Colors.RED
+  }
+}
+
+class RedBlackTree extends BinarySearchTree {
+  constructor () {
+    super()
+  }
+  insert (key) {
+    if (this.root == null) {
+      this.root = new RedBlackNode(key, Colors.BLACK)
+    } else {
+      const newNode = this.insertNode(this.root, key)
+      this.fixTreeProperties(newNode)
+    }
+  }
+  insertNode (node, key) {
+    if (this.compareFn(key, node.key) === Compare.LESS_THEN) {
+      if (node.left == null) {
+        node.left = new RedBlackNode(key)
+        node.parent = node
+        return node.left
+      } else {
+        return this.insertNode(node.left, key)
+      }
+    } else {
+      if (node.right == null) {
+        node.right = new RedBlackNode(key)
+        node.parent = node
+        return node.right
+      } else {
+        return this.insertNode(node.right, key)
+      }
+    }
+  }
+  fixTreeProperties (node) {
+    while (node && node.parent && node.isRed() && node.parent.isRed()) {
+      const parent = node.parent
+      const grandParent = parent.parent
+      if(grandParent == null) return
+      if (parent === grandParent.left) {
+        const uncle = grandParent.right
+        if (uncle && uncle.isRed()) {
+          grandParent.color = Colors.RED
+          parent.color = Colors.BLACK
+          uncle.color = Colors.BLACK
+          node = grandParent
+        } else {
+          if (node === parent.right) {
+            this.rotationLeft(parent)
+            node = parent
+            parent = node.parent
+          }
+          this.rotationRight(grandParent)
+          parent.color = Colors.BLACK
+          grandParent.color = Colors.RED
+          node = parent
+        }
+      } else {
+        const uncle = grandParent.left
+        if (uncle && uncle.isRed()) {
+          grandParent.color = Colors.RED
+          parent.color = Colors.BLACK
+          uncle.color = Colors.BLACK
+          node = grandParent
+        } else {
+          if (node === parent.left) {
+            this.rotationRight(parent)
+            node = parent
+            parent = node.parent
+          }
+          this.rotationLeft(grandParent)
+          parent.color = Colors.BLACK
+          grandParent.color = Colors.RED
+          node = parent
+        }
+      }
+    }
+  }
+  rotationLeft (node) {
+    const temp = node.right
+    node.right = temp.left
+    if (temp && temp.left) temp.left.parent = node
+    temp.parent = node.parent
+    if (!temp.parent) this.root = temp
+    else if (node.parent.left === node) node.parent.left = temp
+    else if (node.parent.right === node) node.parent.right = temp
+    temp.left = node
+    node.parent = temp
+  }
+  rotationRight (node) {
+    const temp = node.left
+    node.left = temp.right
+    if (temp && temp.right) temp.right.parent = node
+    temp.parent = node.parent
+    if (temp.parent == null) this.root = temp
+    else if (node.parent.left === node) node.parent.left = temp
+    else if (node.parent.right === node) node.parent.right = temp
+    temp.right = node
+    node.parent = temp
+  }
+}
+```
+
