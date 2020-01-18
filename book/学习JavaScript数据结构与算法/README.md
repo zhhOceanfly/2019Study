@@ -1709,3 +1709,243 @@ function getRightIndex (index) {
   return 2 * index + 2
 }
 ```
+
+## 11 图
+术语:
+* 图: 是一组由边连接的节点（或顶点），任何二元关系都可以用图来表示，数学语言G = (V, E)
+* V: 一组节点(verties)
+* E: 一组边(edge)
+* 相邻节点: 由一条边连接在一起的顶点称为相邻顶点
+* 度: 相邻节点的数量
+* 路径: 从一个节点到达另一个节点所经过的所有节点的组合，路径要求不包含重复节点。
+* 连通图: 任何两个节点都存在路径
+* 有向图: 边存在方向
+* 无向图: 边不存在方向
+* 强连通图: 两顶点在两个方向都存在路径
+* 图还可以按加不加权分为加权图和未加权图
+
+图的表示:
+1. 邻接矩阵
+邻接矩阵即二维数据，一个维度存放所有的节点，另一个维度也存放所有的节点，值为0表示两节点不相邻，为1表示两节点相邻
+
+不是强连通的图（稀疏图）如果用邻接矩阵来表示，则矩阵中将会有很多0，这意味着我们浪费了计算机存储空间来表示根本不存在的边。
+
+ex: 十万人的关系图中，由于一个人认识的人是有限的，故属于非强连通图(稀疏图)，使用邻接矩阵表示时，空间复杂的为O(n^2)，中间很多值都为0，浪费了大量存储空间
+
+2. 邻接表
+表的key为节点，value为节点对应的边(可以使用链表、数组等数据结构存储)
+
+优点: 空间利用率更高
+缺点: 查找某个节点与另一个节点是否相邻时，邻接矩阵时间复杂度为O(1)，邻接表略慢与邻接矩阵
+
+大多数情况下邻接表更优
+
+3. 关联矩阵
+与邻接矩阵类似，关联矩阵的一个维度存放所有的节点，另一个维度存放所有的边，值为0表示该节点不处于该边上，值为1表示该节点处于该边上。
+
+关联矩阵通常用于边的数量比点的数量多的情况
+
+### 11.1 实现
+```
+const Dictionary = require('../v1/8dictionaryAndHashMap').Dictionary
+class Graph {
+  constructor (isDirected = false) {
+    this.isDirected = isDirected
+    this.vertices = []
+    this.adjList = new Dictionary()
+  }
+  addVertex (v) {
+    if (v == null) return false
+    if (this.vertices.includes(v)) return false
+    this.vertices.push(v)
+    this.adjList.set(v, [])
+    return true
+  }
+  addEdge (v, w) {
+    this.addVertex(v)
+    this.addVertex(w)
+    const neighborsV = this.adjList.get(v)
+    !neighborsV.includes(w) && neighborsV.push(w)
+    if (!this.isDirected) {
+      const neighborsW = this.adjList.get(w)
+      !neighborsW.includes(v) && neighborsW.push(v)
+    }
+  }
+  getVertices () {
+    return this.vertices
+  }
+  getAdjList () {
+    return this.adjList
+  }
+  toString () {
+    let str = ''
+    for (const vertex of this.vertices) {
+      str += `${vertex} ->`
+      const neighbors = this.adjList.get(vertex)
+      for (const edge of neighbors) {
+        str += ` ${edge}`
+      }
+      str += '\n'
+    }
+    return str
+  }
+}
+```
+
+### 11.2 图的遍历
+#### 11.2.1 广度遍历 breadthFirstSearch(BFS)
+广度遍历依靠的是队里数据结构，先搜索到的元素先进行遍历
+```
+const Colors = {
+  WHITE: Symbol('white'),
+  GREY: Symbol('grey'),
+  BLACK: Symbol('black')
+}
+const initColor = vertices => {
+  const colors = {}
+  for (const vertex of vertices) {
+    colors[vertex] = Colors.WHITE
+  }
+  return colors
+}
+const Queue = require('./queue').default
+function breadthFirstSearch (graph, startVertex, callback) {
+  const vertices = graph.getVertices()
+  const adjList = graph.getAdjList()
+  const queue = new Queue()
+  const colors = initColor(vertices)
+
+  colors[startVertex] = Colors.GREY
+  queue.enqueue(startVertex)
+
+  while (!queue.isEmpty()) {
+    const vertex = queue.dequeue()
+    const neighbors = adjList.get(vertex)
+    for (const neighbor of neighbors) {
+      if (colors[neighbor] === Colors.WHITE) {
+        colors[neighbor] = Colors.GREY
+        queue.enqueue(neighbor)
+      }
+    }
+    colors[vertex] = Colors.BLACK
+    callback && callback()
+  }
+}
+```
+
+#### 12.2.2 深度遍历
+深度遍历依靠的是栈数据结构
+```
+const Stack = require('../v1/4stacks').default
+function depthFirstSearch (graph, startVertex) {
+  const vertices = graph.getVertices()
+  const adjList = graph.getAdjList()
+  const stack = new Stack()
+  const colors = initColor(vertices)
+
+  colors[startVertex] = Colors.GREY
+  stack.push(startVertex)
+
+  while (!stack.isEmpty()) {
+    const vertex = stack.pop()
+    const neighbors = adjList.get(vertex)
+    for (const neighbor of neighbors) {
+      if (colors[neighbor] === Colors.WHITE) {
+        Colors[neighbor] = Colors.GREY
+        stack.push(neighbor)
+      }
+      colors[vertex] = Colors.BLACK
+      callback && callback()
+    }
+  }
+}
+```
+
+#### 12.2.3 使用广度遍历获得最小路径
+```
+function BFS (graph, startVertex) {
+  const vertices = graph.getVerties()
+  const adjList = graph.getAdjList()
+  const queue = new Queue()
+  const colors = initColor()
+  const distances = {}
+  const predecessors = {}
+
+  for (const vertex of vertices) {
+    distances[vertex] = 0
+    predecessors[vertex] = null
+  }
+  colors[startVertex] = Colors.GREY
+  queue.enqueue(startVertex)
+
+  while (!queue.isEmpty()) {
+    const vertex = queue.dequeue()
+    const neighbors = adjList.get(vertex)
+    for (const neighbor of neighbors) {
+      if (colors[neighbor] === Colors.WHITE) {
+        colors[neighbor] = Colors.GREY
+        distances[neighbor] = distances[vertex] + 1
+        predecessors[neighbor] = vertex
+        queue.enqueue(neighbor)
+      }
+    }
+    colors[vertex] = Colors.BLACK
+  }
+  const obj = {
+    distances,
+    predecessors
+  }
+  obj.minimumPathToString = () => {
+    const str = ''
+    for (const vertex of vertices) {
+      const path = new Stack()
+      path.push(vertex)
+      while (true) {
+        const pre = this.predecessors[vertex]
+        if (pre != null){
+          path.push(pre)
+        } else {
+          break
+        }
+      }
+      str += `${path.pop()}`
+      while (!path.isEmpty()) {
+        str += ` -> ${path.pop()}`
+      }
+      str += `\n`
+    }
+    return str
+  }
+  return obj
+}
+```
+
+#### 12.2.4 使用深度遍历实现拓扑排序
+
+### 12.3 最短路径算法
+上述最广度遍历获取短路径算法并没有考虑是否是有向图、是否是加权图。实际生活中最短路径算法一般都需要考虑有向以及加权。
+#### 12.3.1 Dijkstra算法
+Dijkstra算法是一种计算从单个源到所有其他源的最短路径的贪心算法
+```
+// 看了14章的贪心算法后回来看
+```
+
+#### 12.3.2 Floyd-Warshall算法
+Floyd-Warshall算法是一种计算图中所有最短路径的动态规划算法
+```
+// 看了14章的动态规划算法后回来看
+```
+
+### 12.4 最小生成树
+常用于解决图中的全连通问题，如若干个小岛组成的图，以最少的桥连接所有的岛就是最小生成树问题。
+#### 12.4.1 Prim算法
+Prim算法是一种求解加权无向连通图的MST问题的贪心算法。它能找出一个边的子集，使得其构成的树包含图中所有顶点，且边的权值之和最小。
+```
+
+```
+
+#### 12.4.2 Kruskal算法
+和Prim算法类似，Kruskal算法也是一种求加权无向连通图的MST的贪心算法。
+```
+
+```
