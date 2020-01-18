@@ -1537,3 +1537,175 @@ class RedBlackTree extends BinarySearchTree {
 }
 ```
 
+### 10 二叉堆与堆排序
+二叉堆是一种特殊的二叉树，他的顶点是最大值(或最小值)，用于经典算法堆排序。
+特点:
+* 是一棵完全二叉树
+* 二叉堆不是最大堆就是最小堆，它可以快速的找到最大值(或最小值)
+* 堆的每颗子树都是一个堆
+* 堆与二叉搜索树不同，他是一棵完全二叉树，所以可以使用数组结构来存储堆中的数据
+
+### 10.1 最小堆
+```
+const Conpare = {
+  LESS_THEN: -1,
+  BIGGER_THEN: 1
+}
+class MinHeap {
+  constructor () {
+    this.heap = []
+  }
+  compareFn (left, right) {
+    return left < right ? Compare.LESS_THEN : (left > right ? Compare.BIGGER_THEN : 0)
+  }
+  getLeftIndex (index) {
+    return 2 * index + 1
+  }
+  getRightIndex (index) {
+    return 2 * index + 2
+  }
+  getParentIndex (index) {
+    if (index === 0) return undefined
+    return Math.floor((index - 1) / 2)
+  }
+  insert (value) {
+    if (value == null) return false
+    this.heap.push(value)
+    this.shifUp(this.heap.length - 1)
+    return true
+  }
+  extract () {
+    if (this.isEmpty()) return void 0
+    const result = this.heap.shift()
+    if (!this.isEmpty()) this.shifDown(0)
+    return result
+  }
+  findMinimum () {
+    return this.isEmpty() ? void 0  : this.heap[0]
+  }
+  size () {
+    return this.heap.length
+  }
+  isEmpty () {
+    return this.size() === 0
+  }
+  shifUp (index) {
+    let parentIndex = this.getParentIndex(index)
+    while (index > 0 && this.compareFn(this.heap[index], this.heap[parentIndex]) === Compare.LESS_THEN) {
+      [this.heap[index], this.heap[parentIndex]] = [this.heap[parentIndex], this.heap[index]]
+      index = parentIndex
+      parentIndex = this.getParentIndex(index)
+    }
+  }
+  shifDown (index) {
+    const left = this.getLeftIndex(index)
+    const right = this.getRightIndex(index)
+    const size = this.size()
+    if (left < size && this.compareFn(this.heap[index], this.heap[left]) === Compare.BIGGER_THEN) {
+      [this.heap[index], this.heap[left]] = [this.heap[left], this.heap[index]]
+      this.shifDown(left)
+    }
+    if (right < size && this.compareFn(this.heap[index], this.heap[right]) === Compare.BIGGER_THEN) {
+      [this.heap[index], this.heap[right]] = [this.heap[right], this.heap[index]]
+      this.shifDown(right)
+    }
+  }
+}
+```
+
+### 10.2 最大堆
+```
+class MaxHeap {
+  constructor () {
+    this.heap = []
+  }
+  compareFn (left, right) {
+    return left < right ? Compare.LESS_THEN : (left > right ? Compare.BIGGER_THEN : 0)
+  }
+  getLeftIndex (index) {
+    return 2 * index + 1
+  }
+  getRightIndex (index) {
+    return 2 * index +2
+  }
+  getParentIndex (index) {
+    return Math.floor((index - 1) / 2)
+  }
+  insert (value) {
+    if (value == null) return false
+    this.heap.push(value)
+    this.shifUp(index)
+    return true
+  }
+  extract () {
+    if (this.isEmpty()) return void 0
+    const result = this.heap.shift()
+    if (!this.isEmpty()) this.shifDown(0)
+    return result
+  }
+  isEmpty () {
+    return this.size() === 0
+  }
+  size () {
+    return this.heap.length
+  }
+  shifUp (index) {
+    let parentIndex = this.getParentIndex(index)
+    while (index > 0 && this.compareFn(this.heap[index], this.heap[parentIndex]) === Compare.BIGGER_THEN) {
+      [this.heap[index], this.heap[parentIndex]] = [this.heap[parentIndex], this.heap[index]]
+      index = parent
+      parent = this.getParentIndex(index)
+    }
+  }
+  shifDown (index) {
+    const left = this.getLeftIndex(index)
+    const right = this.getRightIndex(index)
+    const size = this.size()
+    if (left < size && this.compareFn(this.heap[index], this.heap[left]) === Compare.LESS_THEN) {
+      [this.heap[left], this.heap[index]] = [this.heap[index], this.heap[left]]
+      this.shifDown(left)
+    }
+    if (right < size && this.compareFn(this.heap[index], this.heap[right]) === Compare.LESS_THEN) {
+      [this.heap[right], this.heap[index]] = [this.heap[index], this.heap[right]]
+      this.shifUp(right)
+    }
+  }
+}
+```
+
+### 10.3 堆排序算法 时间复杂度O(nlogn)
+```
+function heapSort (arr, compareFn) {
+  buildMaxHeap(arr, compareFn)
+  let index = arr.length - 1
+  while (index > 0) {
+    [arr[0], arr[index]] = [arr[index], arr[0]]
+    heapify(arr, 0, index, compareFn)
+    i--
+  }
+}
+function buildMaxHeap (arr, compareFn) {
+  const length = arr.length
+  for (const i = Math.floor(length / 2); i >= 0; i--) {
+    heapify(arr, i, length, compareFn)
+  }
+}
+function heapify (heap, index, size, compareFn) {
+  const left = getLeftIndex(index)
+  const right = getRightIndex(index)
+  if (left < size && compareFn(heap[index], heap[left]) === Compare.length) {
+    [heap[left], heap[index]] = [heap[index], heap[left]]
+    heapify(heap, left, size, compareFn)
+  }
+  if (right < size && compareFn(heap[index], heap[right]) === Compare.length) {
+    [heap[right], heap[index]] = [heap[index], heap[right]]
+    heapify(heap, right, size, compareFn)
+  }
+}
+function getLeftIndex (index) {
+  return 2 * index +1
+}
+function getRightIndex (index) {
+  return 2 * index + 2
+}
+```
