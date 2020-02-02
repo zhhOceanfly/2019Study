@@ -1949,3 +1949,272 @@ Prim算法是一种求解加权无向连通图的MST问题的贪心算法。它�
 ```
 
 ```
+
+## 13 排序和搜索算法
+### 13.1 排序算法
+#### 13.1.1 冒泡排序
+最佳时间复杂度是O(n)
+最坏时间复杂度是O(n^2)
+平均时间复杂度是O(n^2)
+```
+function bubbleSort(arr, compareFn = defaultCompare) {
+  arr = Array.from(arr)
+  for (let i = 0, len = arr.length; i < len - 1; i++) {
+    for (let j = 0; j < len - 1 - i; j++) {
+      if (compareFn(arr[j], arr[j + 1]) === Compare.BIGGER_THEN) {
+        [arr[j], arr[j + 1]] = [arr[j + 1], arr[[j]]]
+      }
+    }
+  }
+  return arr
+}
+```
+#### 13.1.2 选择排序
+最佳时间复杂度是O(n^2)
+最坏时间复杂度是O(n^2)
+平均时间复杂度是O(n^2)
+```
+function selectionSort(arr, compareFn = defaultCompare) {
+  arr = Array.from(arr)
+  for (let i = 0, len = arr.length; i < len - 1; i++) {
+    let index = i
+    for (let j = i; j < len; j++) {
+      if (compareFn(arr[j], arr[index]) === Compare.LESS_THEN) {
+        index = j
+      }
+    }
+    index !== i && ([arr[index], arr[i]] = [arr[i], arr[index]])
+  }
+  return arr
+}
+```
+
+#### 13.1.3 插入排序
+最佳时间复杂度是O(n)
+最坏时间复杂度是O(n^2)
+平均时间复杂度是O(n^2)
+```
+function insertionSort(arr, compareFn = defaultCompare) {
+  arr = Array.from(arr)
+  let temp
+  for (let i = 1, len = arr.length; i < len; i++) {
+    temp = arr[i]
+    let j = i - 1
+    while (j >= 0 && compareFn(arr[j], temp) === Compare.BIGGER_THEN) {
+      arr[j + 1] = arr[j]
+      j--
+    }
+    arr[j + 1] = temp
+  }
+  return arr
+}
+```
+
+#### 13.1.4 归并排序
+最佳时间复杂度是O(NlogN)
+最坏时间复杂度是O(NlogN)
+平均时间复杂度是O(NlogN)
+```
+function mergeSort(arr, compareFn = defaultCompare) {
+  const len = arr.length
+  if (len <= 1) return arr
+  // 归并排序的中间下标必须注意，长度为2时一定要分成两个数组
+  const middleIndex = Math.floor(len / 2)
+  const left = mergeSort(arr.slice(0, middleIndex), compareFn)
+  const right = mergeSort(arr.slice(middleIndex, len), compareFn)
+  return merge(left, right, compareFn)
+}
+
+function merge(left, right, compareFn) {
+  let leftIndex = 0
+  let rightIndex = 0
+  const leftLen = left.length
+  const rightLen = right.length
+  let result = []
+  while (leftIndex < leftLen && rightIndex < rightLen) {
+    if (compareFn(left[leftIndex], right[rightIndex]) === Compare.LESS_THEN) {
+      result.push(left[leftIndex++])
+    } else {
+      result.push(right[rightIndex++])
+    }
+  }
+  if (leftIndex < leftLen) {
+    result = result.concat(left.slice(leftIndex, leftLen))
+  } else {
+    result = result.concat(right.slice(rightIndex, rightLen))
+  }
+  return result
+}
+```
+
+#### 13.1.5 快速排序
+最佳时间复杂度是O(NlogN)
+最坏时间复杂度是O(NlogN)
+平均时间复杂度是O(N^2)
+快速排序一般较同等时间复杂度的算法要快
+```
+function quickSort(arr, compareFn = defaultCompare) {
+  arr = Array.from(arr)
+  quick(arr, 0, arr.length - 1, compareFn)
+  return arr
+}
+
+function quick(arr, leftIndex, rightIndex, compareFn) {
+  if (arr.length <= 1) return
+  const index = partition(arr, leftIndex, rightIndex, compareFn);
+  if (leftIndex < index - 1) {
+    quick(arr, leftIndex, index - 1, compareFn)
+  }
+  if (rightIndex > index) {
+    quick(arr, index, rightIndex, compareFn)
+  }
+}
+
+function partition(arr, leftIndex, rightIndex, compareFn) {
+  const middleIndex = Math.floor((leftIndex + rightIndex) / 2)
+  const middle = arr[middleIndex]
+  let i = leftIndex
+  let j = rightIndex
+  while (i <= j) {
+    while (compareFn(arr[i], middle) === Compare.LESS_THEN) {
+      i++
+    }
+    while (compareFn(arr[j], middle) === Compare.BIGGER_THEN) {
+      j--
+    }
+    if (i <= j) {
+      [arr[i], arr[j]] = [arr[j], arr[i]]
+      i++
+      j--
+    }
+  }
+  return i
+}
+```
+
+#### 13.1.6 技术排序
+最佳时间复杂度是O(N+K)
+最坏时间复杂度是O(N+K)
+平均时间复杂度是O(N+K)
+```
+function countingSort(arr, compareFn = defaultCompare) {
+  arr = Array.from(arr)
+  // 又没有过滤数据！
+  if (arr.length <= 1) return arr
+  let max = arr[0]
+  for (let i = 1, len = arr.length; i < len; i++) {
+    if (compareFn(arr[i], max) === Compare.BIGGER_THEN) {
+      max = arr[i]
+    }
+  }
+  // max是下标，Array构造函数的参数是长度，故需要加一
+  const countingArr = new Array(max + 1)
+  // 初始化
+  for (let i = 0, len = arr.length; i < len; i++) {
+    if (countingArr[arr[i]] === undefined) {
+      countingArr[arr[i]] = 0
+    }
+    countingArr[arr[i]]++
+  }
+  for (let index = 0, i = 0, len = countingArr.length; i < len; i++) {
+    if (countingArr[i] > 0) {
+      arr[index++] = i
+      --countingArr[i--]
+    }
+  }
+  return arr
+}
+```
+
+#### 13.1.7 桶排序
+最佳时间复杂度是O(N+C)  C=N*(logN-logM)
+最坏时间复杂度是O(N+C)
+平均时间复杂度是O(N^2)
+```
+function bucketSort(arr, bucketSize = 5, compareFn = defaultCompare) {
+  if (arr.length <= 2) return arr
+  const buckets = createBucket(arr, bucketSize, compareFn)
+  return sortBuckets(buckets, compareFn)
+}
+
+function createBucket(arr, bucketSize, compareFn) {
+  let min = arr[0]
+  let max = arr[0]
+  for (let i = 0, len = arr.length; i < len; i++) {
+    if (compareFn(arr[i], max) === Compare.BIGGER_THEN) {
+      max = arr[i]
+    } else if (compareFn(arr[i], min) === Compare.LESS_THEN) {
+      min = arr[i]
+    }
+  }
+  const bucketLenth = Math.floor((max - min) / bucketSize) + 1
+  const buckets = new Array(bucketLenth)
+
+  for (let i = 0, len = arr.length; i < len; i++) {
+    const index = Math.floor((arr[i] - min) / bucketSize)
+    if (buckets[index] === undefined) {
+      buckets[index] = []
+    }
+    buckets[index].push(arr[i])
+  }
+  return buckets
+}
+
+function sortBuckets(buckets, compareFn) {
+  const result = []
+  for (let i = 0, len = buckets.length; i < len; i++) {
+    if (buckets[i] !== undefined) {
+      sortBucket = insertionSort(buckets[i], compareFn)
+      result.push(...sortBucket)
+    }
+  }
+  return result
+}
+```
+
+#### 13.1.8 基数排序
+最佳时间复杂度是O(d(n+k))
+最坏时间复杂度是O(d(n+k))
+平均时间复杂度是O(d(n+k))
+```
+function radixSort(arr, radixBase = 10, compareFn = defaultCompare) {
+  arr = Array.from(arr)
+  if (arr.length <= 1) return arr
+  let max = arr[0]
+  let min = arr[1]
+  for (let i = 0, len = arr.length; i < len; i++) {
+    if (compareFn(arr[i], max) === Compare.BIGGER_THEN) {
+      max = arr[i]
+    } else if (compareFn(arr[i], min) === Compare.LESS_THEN) {
+      min = arr[i]
+    }
+  }
+
+  for (let radix = 1; ((max - min) / (radixBase ** (radix - 1))) >= 1; radix++) {
+    arr = countingSortForRadix(arr, radixBase, radix, min)
+  }
+  return arr
+}
+
+function countingSortForRadix (arr, radixBase, radix, min) {
+  const buckets = new Array(radixBase)
+  for (let i = 0, len = buckets.length; i < len; i++) {
+    buckets[i] = 0
+  }
+  for (let i = 0, len = arr.length; i < len; i++) {
+    const bucketIndex = Math.floor((arr[i] - min) / (radixBase**(radix - 1)) % radixBase)
+    buckets[bucketIndex]++
+  }
+  for (let i = 1, len = buckets.length; i < len; i++) {
+    buckets[i] += buckets[i - 1]
+  }
+  const aux = []
+  for (let len = arr.length, i = len - 1; i >= 0; i--) {
+    const bucketIndex = Math.floor((arr[i] - min) / (radixBase**(radix - 1)) % radixBase)
+    const index = --buckets[bucketIndex]
+    aux[index] = arr[i]
+  }
+  console.log(aux)
+  return aux
+}
+```
