@@ -2218,3 +2218,64 @@ function countingSortForRadix (arr, radixBase, radix, min) {
   return aux
 }
 ```
+
+### 13.2 搜索算法
+#### 13.2.1 顺序搜索
+时间复杂度O(n)
+```
+function sequentialSearch (arr, value, compareFn = defaultCompare) {
+  for (let i = 0, len = arr.length; i < len; i++) {
+    if (compareFn(arr[i], value) === 0) {
+      return i
+    }
+  }
+  return DOES_NOT_EXIST
+}c
+```
+
+#### 13.2.2 二分搜索
+二分搜索需要先对数据进行排序，最好直接传入已排序好的数据，提高性能。
+时间复杂度O(logn)
+```
+function binarySearch (arr, value, isSort = false, compareFn = defaultCompare) {
+  isSort && (arr = quickSort(arr))
+  let letfIndex = 0
+  let rightIndex = arr.length - 1
+  while (letfIndex <= rightIndex) {
+    const middleIndex = Math.floor((letfIndex + rightIndex) / 2)
+    const element = arr[middleIndex]
+    if (compareFn(element, value) === Compare.LESS_THEN) {
+      letfIndex = middleIndex + 1
+    } else if (compareFn(element, value) === Compare.BIGGER_THEN) {
+      rightIndex = middleIndex - 1
+    } else {
+      return middleIndex
+    }
+  }
+  return DOES_NOT_EXIST
+}
+```
+
+#### 13.2.3 内插搜索
+内插搜索时二分搜的变种，二分搜索忽略了要搜索的数值在数据中的位置，而内插搜索需要考虑。
+时间复杂度O(logn)
+```
+function interpolationSearch (arr, value, isSort = false, compareFn = defaultCompare) {
+  isSort && (arr = quickSort(arr))
+  let leftIndex = 0
+  let rightIndex = arr.length - 1
+  while (leftIndex <= rightIndex && arr[leftIndex] <= value && value <= arr[rightIndex]) {
+    const delta = (value - arr[leftIndex]) / (arr[rightIndex] - arr[leftIndex])
+    const position = leftIndex + Math.floor((rightIndex - leftIndex) * delta)
+    const element = arr[position]
+    if (compareFn(element, value) === Compare.LESS_THEN) {
+      leftIndex = position + 1
+    } else if (compareFn(element, value) === Compare.BIGGER_THEN) {
+      rightIndex = position - 1
+    } else {
+      return position
+    }
+  }
+  return DOES_NOT_EXIST
+}
+```
