@@ -2279,3 +2279,15 @@ function interpolationSearch (arr, value, isSort = false, compareFn = defaultCom
   return DOES_NOT_EXIST
 }
 ```
+
+### 13.3 随机算法
+Fisher-Yates随机算法
+```
+function shuffle (arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const randomIndex = Math.floor(Math.random() * (i + 1));
+    [arr[randomIndex], arr[i]] = [arr[i], arr[randomIndex]]
+  }
+  return arr
+}
+```
